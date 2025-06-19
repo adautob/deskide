@@ -73,7 +73,7 @@ class IDE(QMainWindow):
 
         save_action = QAction('&Salvar', self)
         save_action.setShortcut('Ctrl+S')
-        file_menu.addAction(save_action) # Corrigido para usar file_menu
+        file_menu.addAction(save_action)
 
         # Ações do menu Projeto
         open_folder_action = QAction('&Abrir Pasta...', self)
@@ -89,22 +89,37 @@ class IDE(QMainWindow):
         self.editor.clear() # Limpa o conteúdo do editor
         self.current_file_path = None # Reseta o caminho do arquivo atual
 
-        default_file_name = "sem titulo.txt"
+        default_file_name_base = "sem titulo"
+        file_extension = ".txt"
+        file_number = 1
+        new_file_path = ""
+        file_exists = True
+
         project_dir = QDir.currentPath()
-        new_file_path = QDir(project_dir).filePath(default_file_name)
+
+        # Loop para encontrar um nome de arquivo disponível
+        while file_exists:
+            if file_number == 1:
+                new_file_name = default_file_name_base + file_extension
+            else:
+                new_file_name = f"{default_file_name_base} {file_number}{file_extension}"
+
+            new_file_path = QDir(project_dir).filePath(new_file_name)
+            file_exists = QFileInfo(new_file_path).exists()
+            file_number += 1
 
         try:
-            # Tenta criar e salvar um arquivo vazio com o nome padrão
+            # Tenta criar e salvar um arquivo vazio com o nome encontrado
             with open(new_file_path, 'w', encoding='utf-8') as f:
                 f.write("") # Salva um arquivo vazio
             self.current_file_path = new_file_path # Atualiza o caminho do arquivo atual
-            self.setWindowTitle(f'Minha IDE Simples - {QFileInfo(self.current_file_path).fileName()}') # Atualiza o título da janela com QFileInfo
+            self.setWindowTitle(f'Minha IDE Simples - {QFileInfo(self.current_file_path).fileName()}') # Atualiza o título da janela
             print(f"Novo arquivo criado: {self.current_file_path}")
 
-            # **Atualizar o File Explorer para mostrar o novo arquivo**
+            # Atualizar o File Explorer para mostrar o novo arquivo
             self.file_system_model.setRootPath(project_dir) # Define a raiz do modelo
             self.file_tree_view.setRootIndex(self.file_system_model.index(project_dir)) # Define a raiz da view
-            # Opcional: Selecionar o novo arquivo no File Explorer
+            # Selecionar o novo arquivo no File Explorer
             index = self.file_system_model.index(self.current_file_path)
             if index.isValid():
                  self.file_tree_view.setCurrentIndex(index)
