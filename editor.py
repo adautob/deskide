@@ -1,10 +1,12 @@
 # No arquivo editor.py
 
-from PyQt5.QtWidgets import QTextEdit, QWidget
-from PyQt5.QtGui import QSyntaxHighlighter, QTextCharFormat, QFont, QColor, QPainter, QTextBlock
-from PyQt5.QtCore import QRegExp, QSize, QRect, Qt # Adicionada QSize, QRect, Qt
+from PyQt5.QtWidgets import QTextEdit, QWidget, QVBoxLayout # Adicionado QVBoxLayout, embora possa não ser usado aqui diretamente
+from PyQt5.QtGui import QSyntaxHighlighter, QTextCharFormat, QFont, QColor, QPainter, QTextBlock # QTextBlock pode não ser necessário, mas mantido
+from PyQt5.QtCore import QRegExp, QSize, QRect, Qt, QPoint # Adicionada QPoint
 
-import re # Adicionada importação re para o destacador
+import re # Importação re para o destacador
+import os # Importação os para possível uso futuro (embora a exclusão esteja em main.py)
+
 
 # Classe para a área de numeração de linhas
 class LineNumberArea(QWidget):
@@ -17,30 +19,38 @@ class LineNumberArea(QWidget):
         return QSize(self.editor.lineNumberAreaWidth(), 0)
 
     def paintEvent(self, event):
-        # Desenha os números das linhas
         painter = QPainter(self)
         painter.fillRect(event.rect(), Qt.lightGray) # Fundo da área de numeração
 
-        block = self.editor.firstVisibleBlock()
-        block_number = block.blockNumber()
-        # Calcular a posição top usando a geometria do bloco e o deslocamento da barra de rolagem
-        top = self.editor.blockBoundingGeometry(block).top() - self.editor.verticalScrollBar().sliderPosition()
-        bottom = top + self.editor.blockBoundingRect(block).height()
+        # Abordagem alternativa sem blockBoundingGeometry/Rect
+        block = self.editor.document().firstBlock()
+        block_number = 0
+        line_height = self.editor.fontMetrics().height() # Altura aproximada da linha
+        vscroll_pos = self.editor.verticalScrollBar().sliderPosition() # Posição da barra de rolagem vertical
 
-        # Loop sobre os blocos visíveis
-        while block.isValid() and top <= event.rect().bottom():
-            if block.isVisible() and bottom >= event.rect().top():
+        # Iterar por todos os blocos para calcular a posição vertical de cada um
+        while block.isValid():
+             block_top_in_document = 0
+             current_block_for_pos = self.editor.document().firstBlock()
+             while current_block_for_pos != block:
+                 block_top_in_document += line_height # Usando altura aproximada
+                 current_block_for_pos = current_block_for_pos.next()
+
+             # Posição top do bloco na viewport
+             top = block_top_in_document - vscroll_pos
+
+             # Apenas desenha se o bloco for visível e estiver dentro da área de pintura
+             if block.isVisible() and top + line_height >= event.rect().top() and top <= event.rect().bottom():
                 number = str(block_number + 1)
                 painter.setPen(Qt.black)
-                painter.drawText(0, round(top), self.size().width(), self.editor.fontMetrics().height(), # Usar round() para posições y
+                # Usar round() para posições y para evitar problemas de arredondamento
+                painter.drawText(0, round(top), self.size().width(), line_height,
                                  Qt.AlignRight | Qt.AlignVCenter, number)
 
-            block = block.next()
-            top = bottom
-            bottom = top + self.editor.blockBoundingRect(block).height()
-            block_number += 1
+             block = block.next()
+             block_number += 1
 
-# Classe para o destacador de sintaxe (mantida com as correções)
+# Classe para o destacador de sintaxe
 class PythonHighlighter(QSyntaxHighlighter):
     def __init__(self, parent):
         super().__init__(parent)
@@ -156,8 +166,6 @@ class PythonHighlighter(QSyntaxHighlighter):
 class CodeEditor(QTextEdit):
     def __init__(self, parent=None):
         super().__init__(parent)
-        print(f"blockBoundingGeometry disponível? {'blockBoundingGeometry' in dir(self)}") # Linha de teste
-        print(f"blockBoundingRect disponível? {'blockBoundingRect' in dir(self)}") # Linha de teste 2
         # Basic initialization for the editor
         self.setFontFamily('Courier New')
         self.setFontPointSize(10)
@@ -166,12 +174,12 @@ class CodeEditor(QTextEdit):
         # Adiciona o destacador de sintaxe
         self.highlighter = PythonHighlighter(self.document())
 
-        # **Adiciona a área de numeração de linhas**
+        # Adiciona a área de numeração de linhas
         self.lineNumberArea = LineNumberArea(self)
         self.verticalScrollBar().valueChanged.connect(self.lineNumberArea.update) # Sincroniza com a barra de rolagem
         self.document().blockCountChanged.connect(self.updateLineNumberAreaWidth) # Atualiza largura quando o número de blocos muda
         self.document().contentsChange.connect(self.updateLineNumberArea) # Atualiza numeração quando o conteúdo muda
-        #self.updateRequest.connect(self.lineNumberArea.update) # Conecta updateRequest para garantir atualização
+        # Removida a conexão self.updateRequest.connect
 
         self.updateLineNumberAreaWidth(0) # Define a largura inicial
 
@@ -187,45 +195,24 @@ class CodeEditor(QTextEdit):
         return space
 
     def resizeEvent(self, event):
-        # Redimensiona a área de numeração quando o editor é redimensionado
         super().resizeEvent(event)
         cr = self.contentsRect()
         self.lineNumberArea.setGeometry(QRect(cr.left(), cr.top(), self.lineNumberAreaWidth(), cr.height()))
 
-    def paintEvent(self, event):
-        # Chama o paintEvent original do QTextEdit
-        super().paintEvent(event)
-        # O paintEvent da área de numeração é chamado separadamente
 
+    # Implementação alternativa para firstVisibleBlock sem blockBoundingGeometry
     def firstVisibleBlock(self):
-        # Retorna o primeiro bloco (linha) visível no editor
-        # Iterar pelos blocos até encontrar um cuja geometria esteja dentro ou acima da viewport
-        # considerando o deslocamento da barra de rolagem
-        block = self.document().firstBlock()
         vscroll_pos = self.verticalScrollBar().sliderPosition()
-
-        while block.isValid():
-            block_geometry = self.blockBoundingGeometry(block)
-            block_top_in_viewport = block_geometry.top() - vscroll_pos
-
-            # Se o topo do bloco está dentro ou acima da área visível (>= 0), é o primeiro visível
-            if block_top_in_viewport >= -block_geometry.height() and block.isVisible():
-                 return block
-
-            block = block.next()
-
-        return self.document().firstBlock() # Retorna o primeiro bloco se nenhum visível for encontrado (improvável)
+        line_height = self.fontMetrics().height()
+        # Estima o número do primeiro bloco visível
+        first_visible_block_number = round(vscroll_pos / line_height)
+        block = self.document().findBlockByNumber(first_visible_block_number)
+        return block
 
 
     def updateLineNumberAreaWidth(self, newBlockCount):
-        # Slot para atualizar a largura da área de numeração
-        self.setViewportMargins(self.lineNumberAreaWidth(), 0, 0, 0) # Define a margem para a área de numeração
+        self.setViewportMargins(self.lineNumberAreaWidth(), 0, 0, 0)
 
     def updateLineNumberArea(self, position, charsRemoved, charsAdded):
-        # Slot para atualizar a área de numeração quando o conteúdo muda
-        # Precisamos solicitar uma atualização para o LineNumberArea
         self.lineNumberArea.update()
-        self.updateLineNumberAreaWidth(0) # Recalcula a largura (opcional, mas útil para grandes mudanças)
-
-
-# Restante do arquivo editor.py (se houver mais código)
+        self.updateLineNumberAreaWidth(0)
