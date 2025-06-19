@@ -171,6 +171,9 @@ class CodeEditor(QTextEdit):
         self.setFontPointSize(10)
         self.setTabStopWidth(20) # Adjust tab width as needed
 
+        # **Variável para rastrear o caminho do arquivo deste editor**
+        self.current_file_path = None # Inicializa como None
+
         # Adiciona o destacador de sintaxe
         self.highlighter = PythonHighlighter(self.document())
 
