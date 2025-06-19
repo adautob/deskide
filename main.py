@@ -4,6 +4,7 @@ from PyQt5.QtWidgets import (QApplication, QMainWindow, QVBoxLayout, QWidget,
 from PyQt5.QtGui import QIcon
 from PyQt5.QtCore import QDir, Qt, QFileInfo
 from PyQt5.QtWidgets import QFileSystemModel
+import os # Importação adicionada
 
 from editor import CodeEditor
 
@@ -78,7 +79,6 @@ class IDE(QMainWindow):
         save_action = QAction('&Salvar', self)
         save_action.setShortcut('Ctrl+S')
         file_menu.addAction(save_action)
-        save_action.triggered.connect(self.save_file) # Esta linha conecta a ação ao método
 
         # Ações do menu Projeto
         open_folder_action = QAction('&Abrir Pasta...', self)
@@ -124,8 +124,6 @@ class IDE(QMainWindow):
             print(f"Novo arquivo criado: {self.current_file_path}")
 
             # Atualizar o File Explorer para mostrar o novo arquivo na pasta correta
-            # Não precisamos redefinir setRootPath se target_dir já é a raiz exibida
-            # Basta garantir que o modelo detecta a mudança e selecionar o arquivo
             index = self.file_system_model.index(self.current_file_path)
             if index.isValid():
                  self.file_tree_view.setCurrentIndex(index)
@@ -142,7 +140,8 @@ class IDE(QMainWindow):
 
     def open_file(self):
         options = QFileDialog.Options()
-        file_path, _ = QFileDialog.getOpenFileName(self, "Abrir Arquivo", "", "Todos os Arquivos (*);;Arquivos de Texto (*.txt)", options=options)
+        # Usar self.current_folder_path como o diretório inicial para o diálogo de abrir
+        file_path, _ = QFileDialog.getOpenFileName(self, "Abrir Arquivo", self.current_folder_path, "Todos os Arquivos (*);;Arquivos de Texto (*.txt)", options=options)
         if file_path:
             try:
                 with open(file_path, 'r', encoding='utf-8') as f:
@@ -168,10 +167,10 @@ class IDE(QMainWindow):
             print("Operação de abrir arquivo cancelada.")
 
     def save_file(self):
-        print("Método save_file chamado") # Debug print
-
         # Usar regex para verificar se o nome do arquivo atual corresponde ao padrão "sem titulo"
         is_untitled = False
+        original_file_path = self.current_file_path # Armazena o caminho original antes de potencial mudança
+
         if self.current_file_path:
             file_info = QFileInfo(self.current_file_path)
             file_name = file_info.fileName()
@@ -180,13 +179,8 @@ class IDE(QMainWindow):
             if re.match(pattern, file_name):
                 is_untitled = True
 
-        print(f"current_file_path: {self.current_file_path}") # Debug print
-        print(f"is_untitled: {is_untitled}") # Debug print
-
-
         if self.current_file_path and not is_untitled:
             # Salvar em arquivo existente (não "sem titulo")
-            print("Tentando salvar em arquivo existente") # Debug print
             try:
                 content = self.editor.toPlainText()
                 with open(self.current_file_path, 'w', encoding='utf-8') as f:
@@ -196,7 +190,6 @@ class IDE(QMainWindow):
                 print(f"Erro ao salvar o arquivo: {e}")
         else:
             # "Salvar como" para arquivos sem título ou sem caminho definido
-            print("Executando 'Salvar como'") # Debug print
             options = QFileDialog.Options()
 
             # Sugerir o nome atual se for um arquivo "sem titulo"
@@ -211,23 +204,21 @@ class IDE(QMainWindow):
                      initial_file_name = file_name
 
 
-            file_path, _ = QFileDialog.getSaveFileName(self, "Salvar Arquivo", initial_file_name, "Todos os Arquivos (*);;Arquivos de Texto (*.txt)", options=options)
-            print(f"Caminho retornado por getSaveFileName: {file_path}") # Debug print
-
+            # Usar self.current_folder_path como o diretório inicial para o diálogo de salvar
+            file_path, _ = QFileDialog.getSaveFileName(self, "Salvar Arquivo", self.current_folder_path, "Todos os Arquivos (*);;Arquivos de Texto (*.txt)", initial_file_name, options=options)
 
             if file_path:
                 try:
                     content = self.editor.toPlainText()
 
-                    # TODO: Implementar exclusão do arquivo antigo "sem titulo" se o nome mudar
-                    # Importar os para usar os.remove()
-                    # import os
-                    # if is_untitled and file_path != self.current_file_path and os.path.exists(self.current_file_path):
-                    #     try:
-                    #         os.remove(self.current_file_path)
-                    #         print(f"Arquivo antigo excluído: {self.current_file_path}")
-                    #     except Exception as e:
-                    #         print(f"Erro ao excluir arquivo antigo: {e}")
+                    # Implementar exclusão do arquivo antigo "sem titulo" se o nome mudar
+                    # Usar original_file_path para a verificação
+                    if is_untitled and original_file_path and file_path != original_file_path and os.path.exists(original_file_path):
+                        try:
+                            os.remove(original_file_path)
+                            print(f"Arquivo antigo excluído: {original_file_path}")
+                        except Exception as e:
+                            print(f"Erro ao excluir arquivo antigo: {e}")
 
 
                     with open(file_path, 'w', encoding='utf-8') as f:
@@ -247,7 +238,7 @@ class IDE(QMainWindow):
                 except Exception as e:
                     print(f"Erro ao salvar o arquivo: {e}")
             else:
-                print("Operação de salvar cancelada.") # Debug print
+                print("Operação de salvar cancelada.")
 
 
     def open_folder(self):
