@@ -1,9 +1,45 @@
 # No arquivo editor.py
 
-from PyQt5.QtWidgets import QTextEdit
-from PyQt5.QtGui import QSyntaxHighlighter, QTextCharFormat, QFont, QColor
-from PyQt5.QtCore import QRegExp
+from PyQt5.QtWidgets import QTextEdit, QWidget
+from PyQt5.QtGui import QSyntaxHighlighter, QTextCharFormat, QFont, QColor, QPainter, QTextBlock
+from PyQt5.QtCore import QRegExp, QSize, QRect, Qt # Adicionada QSize, QRect, Qt
 
+import re # Adicionada importação re para o destacador
+
+# Classe para a área de numeração de linhas
+class LineNumberArea(QWidget):
+    def __init__(self, editor):
+        super().__init__(editor)
+        self.editor = editor
+
+    def sizeHint(self):
+        # Sugere a largura necessária para a numeração
+        return QSize(self.editor.lineNumberAreaWidth(), 0)
+
+    def paintEvent(self, event):
+        # Desenha os números das linhas
+        painter = QPainter(self)
+        painter.fillRect(event.rect(), Qt.lightGray) # Fundo da área de numeração
+
+        block = self.editor.firstVisibleBlock()
+        block_number = block.blockNumber()
+        top = self.editor.blockBoundingGeometry(block).translated(self.editor.contentOffset()).top()
+        bottom = top + self.editor.blockBoundingRect(block).height()
+
+        # Loop sobre os blocos visíveis
+        while block.isValid() and top <= event.rect().bottom():
+            if block.isVisible() and bottom >= event.rect().top():
+                number = str(block_number + 1)
+                painter.setPen(Qt.black)
+                painter.drawText(0, top, self.size().width(), self.editor.fontMetrics().height(),
+                                 Qt.AlignRight | Qt.AlignVCenter, number)
+
+            block = block.next()
+            top = bottom
+            bottom = top + self.editor.blockBoundingRect(block).height()
+            block_number += 1
+
+# Classe para o destacador de sintaxe (mantida com as correções)
 class PythonHighlighter(QSyntaxHighlighter):
     def __init__(self, parent):
         super().__init__(parent)
@@ -49,11 +85,10 @@ class PythonHighlighter(QSyntaxHighlighter):
         # Lista de regras de destaque - Ordem importa!
         self.highlighting_rules = []
 
-        # **Regra para comentários (DEVE SER A PRIMEIRA)**
+        # Regra para comentários (DEVE SER A PRIMEIRA)
         self.highlighting_rules.append((QRegExp(r"#.*"), comment_format))
 
         # Regras para palavras-chave (usando limites de palavra mais estritos)
-        # Garante que a palavra inteira seja correspondida
         for keyword in keywords:
              pattern = QRegExp(r"\b" + QRegExp.escape(keyword) + r"\b")
              self.highlighting_rules.append((pattern, keyword_format))
@@ -75,10 +110,10 @@ class PythonHighlighter(QSyntaxHighlighter):
         # Regra para números (inteiros e de ponto flutuante com limites de palavra)
         self.highlighting_rules.append((QRegExp(r"\b\d+(\.\d*)?|\.\d+\b"), number_format))
 
-        # Regra para operadores (alguns exemplos) - Mantido, mas a regra de comentário vem antes
+        # Regra para operadores (alguns exemplos)
         operators = ["=", "==", "!=", "<", "<=", ">", ">=", "\\+", "-", "\\*", "/", "//", "%", "\\*\\*",
                      "\\+=", "-=", "\\*=", "/=", "//=", "%=", "\\*\\*=",
-                     "&", "\\|", "\\^", "~", "<<", ">>"] # Removido 'and', 'or', 'not', 'is', 'in' daqui
+                     "&", "\\|", "\\^", "~", "<<", ">>"]
 
         for operator in operators:
             pattern = QRegExp(QRegExp.escape(operator))
@@ -113,13 +148,10 @@ class PythonHighlighter(QSyntaxHighlighter):
                     self.setFormat(index, length, format)
 
                 # Continua a busca após a correspondência encontrada
-                # Usamos index + 1 para avançar pelo menos um caractere e evitar loops infinitos
-                # para padrões de comprimento zero (que não devem ocorrer aqui, mas é uma prática segura)
                 index = expression.indexIn(text, index + max(1, expression.matchedLength()))
 
 
-        # Não definimos blockState para destaque simples por linha
-
+# Classe CodeEditor com numeração de linhas
 class CodeEditor(QTextEdit):
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -130,5 +162,60 @@ class CodeEditor(QTextEdit):
 
         # Adiciona o destacador de sintaxe
         self.highlighter = PythonHighlighter(self.document())
+
+        # **Adiciona a área de numeração de linhas**
+        self.lineNumberArea = LineNumberArea(self)
+        self.verticalScrollBar().valueChanged.connect(self.lineNumberArea.update) # Sincroniza com a barra de rolagem
+        self.document().blockCountChanged.connect(self.updateLineNumberAreaWidth) # Atualiza largura quando o número de blocos muda
+        self.document().contentsChange.connect(self.updateLineNumberArea) # Atualiza numeração quando o conteúdo muda
+
+
+        self.updateLineNumberAreaWidth(0) # Define a largura inicial
+
+
+    def lineNumberAreaWidth(self):
+        # Calcula a largura necessária para a área de numeração
+        digits = 1
+        max_value = max(1, self.document().blockCount())
+        while max_value >= 10:
+            max_value /= 10
+            digits += 1
+        space = 3 + self.fontMetrics().horizontalAdvance('9') * digits # Ajuste para o preenchimento
+        return space
+
+    def resizeEvent(self, event):
+        # Redimensiona a área de numeração quando o editor é redimensionado
+        super().resizeEvent(event)
+        cr = self.contentsRect()
+        self.lineNumberArea.setGeometry(QRect(cr.left(), cr.top(), self.lineNumberAreaWidth(), cr.height()))
+
+    def paintEvent(self, event):
+        # Chama o paintEvent original do QTextEdit
+        super().paintEvent(event)
+        # O paintEvent da área de numeração é chamado separadamente
+
+    def firstVisibleBlock(self):
+        # Retorna o primeiro bloco (linha) visível no editor
+        # Itera para encontrar o primeiro bloco que tem y >= 0 e está visível
+        offset = self.contentOffset()
+        block = self.document().firstBlock()
+        while block.isValid():
+            block_geometry = self.blockBoundingGeometry(block)
+            if block_geometry.translated(offset).top() >= 0 and block.isVisible():
+                return block
+            block = block.next()
+        return self.document().firstBlock() # Retorna o primeiro bloco se nenhum visível for encontrado (improvável)
+
+
+    def updateLineNumberAreaWidth(self, newBlockCount):
+        # Slot para atualizar a largura da área de numeração
+        self.setViewportMargins(self.lineNumberAreaWidth(), 0, 0, 0) # Define a margem para a área de numeração
+
+    def updateLineNumberArea(self, position, charsRemoved, charsAdded):
+        # Slot para atualizar a área de numeração quando o conteúdo muda
+        # Precisamos solicitar uma atualização para o LineNumberArea
+        self.lineNumberArea.update()
+        self.updateLineNumberAreaWidth(0) # Recalcula a largura (opcional, mas útil para grandes mudanças)
+
 
 # Restante do arquivo editor.py (se houver mais código)
