@@ -2,7 +2,7 @@ import sys
 from PyQt5.QtWidgets import (QApplication, QMainWindow, QVBoxLayout, QWidget,
                              QMenuBar, QMenu, QAction, QTreeView, QSplitter, QFileDialog)
 from PyQt5.QtGui import QIcon
-from PyQt5.QtCore import QDir, Qt
+from PyQt5.QtCore import QDir, Qt, QFileInfo # Adicionada QFileInfo aqui
 from PyQt5.QtWidgets import QFileSystemModel
 
 from editor import CodeEditor
@@ -73,8 +73,7 @@ class IDE(QMainWindow):
 
         save_action = QAction('&Salvar', self)
         save_action.setShortcut('Ctrl+S')
-        save_action.triggered.connect(self.save_file)
-        file_menu.addAction(save_action)
+        save_menu.addAction(save_action)
 
         # Ações do menu Projeto
         open_folder_action = QAction('&Abrir Pasta...', self)
@@ -99,7 +98,7 @@ class IDE(QMainWindow):
             with open(new_file_path, 'w', encoding='utf-8') as f:
                 f.write("") # Salva um arquivo vazio
             self.current_file_path = new_file_path # Atualiza o caminho do arquivo atual
-            self.setWindowTitle(f'Minha IDE Simples - {QDir(self.current_file_path).fileName()}') # Atualiza o título da janela
+            self.setWindowTitle(f'Minha IDE Simples - {QFileInfo(self.current_file_path).fileName()}') # Atualiza o título da janela com QFileInfo
             print(f"Novo arquivo criado: {self.current_file_path}")
 
             # Opcional: Forçar atualização do File Explorer, se necessário
@@ -122,6 +121,7 @@ class IDE(QMainWindow):
                     content = f.read()
                     self.editor.setPlainText(content)
                     self.current_file_path = file_path # Atualiza o caminho do arquivo atual
+                    self.setWindowTitle(f'Minha IDE Simples - {QFileInfo(self.current_file_path).fileName()}') # Atualiza o título ao abrir
                     print(f"Arquivo aberto: {self.current_file_path}")
 
                     # Opcional: Selecionar o arquivo no File Explorer
@@ -156,6 +156,7 @@ class IDE(QMainWindow):
                     with open(file_path, 'w', encoding='utf-8') as f:
                         f.write(content)
                     self.current_file_path = file_path # Atualiza o caminho do arquivo atual
+                    self.setWindowTitle(f'Minha IDE Simples - {QFileInfo(self.current_file_path).fileName()}') # Atualiza o título ao salvar novo
                     print(f"Arquivo salvo: {self.current_file_path}")
                     # Opcional: Atualizar o File Explorer para mostrar o novo arquivo/caminho
                     # self.file_system_model.setRootPath(QDir(file_path).cdUp().absolutePath()) # Pode ser útil ajustar a view
@@ -184,6 +185,7 @@ class IDE(QMainWindow):
                 content = f.read()
                 self.editor.setPlainText(content)
                 self.current_file_path = file_path # Atualiza o caminho do arquivo atual
+                self.setWindowTitle(f'Minha IDE Simples - {QFileInfo(self.current_file_path).fileName()}') # Atualiza o título ao abrir do explorer
         except Exception as e:
             print(f"Erro ao abrir o arquivo: {e}")
 
