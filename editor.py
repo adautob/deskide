@@ -156,6 +156,7 @@ class PythonHighlighter(QSyntaxHighlighter):
 class CodeEditor(QTextEdit):
     def __init__(self, parent=None):
         super().__init__(parent)
+        print(f"blockBoundingGeometry disponível? {'blockBoundingGeometry' in dir(self)}") # Linha de teste
         # Basic initialization for the editor
         self.setFontFamily('Courier New')
         self.setFontPointSize(10)
