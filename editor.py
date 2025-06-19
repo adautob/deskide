@@ -178,8 +178,13 @@ class CodeEditor(QTextEdit):
         self.lineNumberArea = LineNumberArea(self)
         self.verticalScrollBar().valueChanged.connect(self.lineNumberArea.update) # Sincroniza com a barra de rolagem
         self.document().blockCountChanged.connect(self.updateLineNumberAreaWidth) # Atualiza largura quando o número de blocos muda
-        self.document().contentsChange.connect(self.updateLineNumberArea) # Atualiza numeração quando o conteúdo muda
-        # Removida a conexão self.updateRequest.connect
+        self.document().contentsChange.connect(self.updateLineNumberArea) # Atualiza numeração quando o conteúdo muda (chama updateLineNumberArea, que chama update)
+
+        # **Novas conexões para garantir atualização rápida da numeração**
+        self.textChanged.connect(self.lineNumberArea.update) # Atualiza quando o texto muda
+        self.document().blockCountChanged.connect(self.lineNumberArea.update) # Atualiza quando o número de blocos muda
+        self.verticalScrollBar().valueChanged.connect(self.lineNumberArea.update) # Conexão duplicada, mas mantém por segurança
+
 
         self.updateLineNumberAreaWidth(0) # Define a largura inicial
 
