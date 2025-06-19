@@ -52,6 +52,9 @@ class IDE(QMainWindow):
         # Define a proporção inicial do splitter
         splitter.setSizes([200, 800]) # 200px para o file explorer, 800px para o editor
 
+        # Variável para rastrear o arquivo atual
+        self.current_file_path = None
+
         # Barra de Menu
         menubar = self.menuBar()
         file_menu = menubar.addMenu('&Arquivo') # Use & para atalho (Alt+A)
@@ -91,8 +94,32 @@ class IDE(QMainWindow):
         # Implementar lógica para abrir arquivo via diálogo e carregar no editor
 
     def save_file(self):
-        print("Action \'Salvar\' triggered")
-        # Implementar lógica para salvar conteúdo do editor
+        if self.current_file_path:
+            try:
+                content = self.editor.toPlainText()
+                with open(self.current_file_path, 'w', encoding='utf-8') as f:
+                    f.write(content)
+                print(f"Arquivo salvo: {self.current_file_path}")
+            except Exception as e:
+                print(f"Erro ao salvar o arquivo: {e}")
+        else:
+            # Se não houver arquivo atual, solicitar ao usuário onde salvar
+            options = QFileDialog.Options()
+            file_path, _ = QFileDialog.getSaveFileName(self, "Salvar Arquivo", "", "Todos os Arquivos (*);;Arquivos de Texto (*.txt)", options=options)
+            if file_path:
+                try:
+                    content = self.editor.toPlainText()
+                    with open(file_path, 'w', encoding='utf-8') as f:
+                        f.write(content)
+                    self.current_file_path = file_path # Atualiza o caminho do arquivo atual
+                    print(f"Arquivo salvo: {self.current_file_path}")
+                    # Opcional: Atualizar o File Explorer para mostrar o novo arquivo/caminho
+                    # self.file_system_model.setRootPath(QDir(file_path).cdUp().absolutePath()) # Pode ser útil ajustar a view
+                except Exception as e:
+                    print(f"Erro ao salvar o arquivo: {e}")
+            else:
+                print("Operação de salvar cancelada.")
+
 
     def open_folder(self):
         folder_path = QFileDialog.getExistingDirectory(self, "Abrir Pasta", QDir.currentPath())
@@ -108,11 +135,11 @@ class IDE(QMainWindow):
 
         file_path = self.file_system_model.filePath(index)
         print(f"Abrir arquivo do explorer: {file_path}")
-        # Implementar lógica para ler o conteúdo do arquivo e carregar no self.editor
         try:
             with open(file_path, 'r', encoding='utf-8') as f:
                 content = f.read()
                 self.editor.setPlainText(content)
+                self.current_file_path = file_path # Atualiza o caminho do arquivo atual
         except Exception as e:
             print(f"Erro ao abrir o arquivo: {e}")
 
