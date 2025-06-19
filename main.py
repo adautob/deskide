@@ -90,8 +90,28 @@ class IDE(QMainWindow):
         # Implementar lógica para criar novo arquivo no editor e, possivelmente, no file explorer
 
     def open_file(self):
-        print("Action \'Abrir Arquivo\' triggered")
-        # Implementar lógica para abrir arquivo via diálogo e carregar no editor
+        options = QFileDialog.Options()
+        file_path, _ = QFileDialog.getOpenFileName(self, "Abrir Arquivo", "", "Todos os Arquivos (*);;Arquivos de Texto (*.txt)", options=options)
+        if file_path:
+            try:
+                with open(file_path, 'r', encoding='utf-8') as f:
+                    content = f.read()
+                    self.editor.setPlainText(content)
+                    self.current_file_path = file_path # Atualiza o caminho do arquivo atual
+                    print(f"Arquivo aberto: {self.current_file_path}")
+
+                    # Opcional: Selecionar o arquivo no File Explorer
+                    index = self.file_system_model.index(file_path)
+                    if index.isValid():
+                         self.file_tree_view.setCurrentIndex(index)
+                         # Opcional: Expandir o diretório pai no File Explorer
+                         self.file_tree_view.expand(index.parent())
+
+
+            except Exception as e:
+                print(f"Erro ao abrir o arquivo: {e}")
+        else:
+            print("Operação de abrir arquivo cancelada.")
 
     def save_file(self):
         if self.current_file_path:
