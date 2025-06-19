@@ -250,12 +250,19 @@ class IDE(QMainWindow):
     # **Novo método para "Salvar como"**
     def save_file_as(self):
         print("Action \'Salvar como...\' triggered")
+        
+        current_editor = self.current_editor() # Obtém o editor da aba ativa
+        if not current_editor: # Se não houver editor ativo
+            print("Nenhum editor ativo para salvar como.")
+            return # Sai do método        
+        
+        
         options = QFileDialog.Options()
 
         # Sugerir o nome do arquivo atual (se houver) como nome inicial
         initial_file_name = ""
-        if self.current_file_path:
-            initial_file_name = QFileInfo(self.current_file_path).fileName()
+        if current_editor.current_file_path: # Usa o caminho do editor ativo
+            initial_file_name = QFileInfo(current_editor.current_file_path).fileName()
 
 
         # Abrir o diálogo de salvar sempre
@@ -274,9 +281,11 @@ class IDE(QMainWindow):
                 with open(file_path, 'w', encoding='utf-8') as f:
                     f.write(content)
 
-                self.current_file_path = file_path # Atualiza o caminho do arquivo atual para o novo
-                self.setWindowTitle(f'Minha IDE Simples - {QFileInfo(self.current_file_path).fileName()}') # Atualiza o título
-                print(f"Arquivo salvo como: {self.current_file_path}")
+                current_editor.current_file_path = file_path # Atualiza o caminho do arquivo atual para o novo
+                file_name_saved = QFileInfo(file_path).fileName()
+                self.setWindowTitle(f'Minha IDE Simples - {file_name_saved}') # Atualiza o título da janela principal
+                self.tab_widget.setTabText(self.tab_widget.currentIndex(), file_name_saved) # Atualiza o título da aba
+                print(f"Arquivo salvo como: {file_path}")
                 # Atualizar o File Explorer para refletir o novo arquivo/caminho
                 saved_file_dir = QFileInfo(file_path).dir().absolutePath()
                 self.file_system_model.setRootPath(saved_file_dir)
