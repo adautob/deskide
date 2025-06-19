@@ -31,12 +31,14 @@ class IDE(QMainWindow):
 
         # File Explorer
         self.file_system_model = QFileSystemModel()
-        self.file_system_model.setRootPath(QDir.currentPath()) # Define o diretório raiz inicial
+        # Inicializa com o diretório atual do projeto
+        initial_folder = QDir.currentPath()
+        self.file_system_model.setRootPath(initial_folder)
         self.file_system_model.setFilter(QDir.NoDotAndDotDot | QDir.AllDirs | QDir.Files) # Filtra arquivos e diretórios
 
         self.file_tree_view = QTreeView()
         self.file_tree_view.setModel(self.file_system_model)
-        self.file_tree_view.setRootIndex(self.file_system_model.index(QDir.currentPath())) # Define o índice raiz inicial
+        self.file_tree_view.setRootIndex(self.file_system_model.index(initial_folder)) # Define o índice raiz inicial
         self.file_tree_view.doubleClicked.connect(self.open_file_from_explorer) # Conecta o double click
 
         # Oculta colunas desnecessárias (tamanho, tipo, data)
@@ -52,8 +54,10 @@ class IDE(QMainWindow):
         # Define a proporção inicial do splitter
         splitter.setSizes([200, 800]) # 200px para o file explorer, 800px para o editor
 
-        # Variável para rastrear o arquivo atual
+        # Variáveis para rastrear o arquivo e a pasta atuais
         self.current_file_path = None
+        self.current_folder_path = initial_folder # Armazena a pasta atualmente exibida no explorer
+
 
         # Barra de Menu
         menubar = self.menuBar()
@@ -95,16 +99,18 @@ class IDE(QMainWindow):
         new_file_path = ""
         file_exists = True
 
-        project_dir = QDir.currentPath()
+        # Usar a pasta atual do File Explorer como diretório para o novo arquivo
+        target_dir = self.current_folder_path if self.current_folder_path else QDir.currentPath()
 
-        # Loop para encontrar um nome de arquivo disponível
+
+        # Loop para encontrar um nome de arquivo disponível na pasta alvo
         while file_exists:
             if file_number == 1:
                 new_file_name = default_file_name_base + file_extension
             else:
                 new_file_name = f"{default_file_name_base} {file_number}{file_extension}"
 
-            new_file_path = QDir(project_dir).filePath(new_file_name)
+            new_file_path = QDir(target_dir).filePath(new_file_name)
             file_exists = QFileInfo(new_file_path).exists()
             file_number += 1
 
@@ -116,13 +122,14 @@ class IDE(QMainWindow):
             self.setWindowTitle(f'Minha IDE Simples - {QFileInfo(self.current_file_path).fileName()}') # Atualiza o título da janela
             print(f"Novo arquivo criado: {self.current_file_path}")
 
-            # Atualizar o File Explorer para mostrar o novo arquivo
-            self.file_system_model.setRootPath(project_dir) # Define a raiz do modelo
-            self.file_tree_view.setRootIndex(self.file_system_model.index(project_dir)) # Define a raiz da view
-            # Selecionar o novo arquivo no File Explorer
+            # Atualizar o File Explorer para mostrar o novo arquivo na pasta correta
+            # Não precisamos redefinir setRootPath se target_dir já é a raiz exibida
+            # Basta garantir que o modelo detecta a mudança e selecionar o arquivo
             index = self.file_system_model.index(self.current_file_path)
             if index.isValid():
                  self.file_tree_view.setCurrentIndex(index)
+                 # Opcional: Expandir o diretório pai para garantir que o arquivo esteja visível
+                 self.file_tree_view.expand(index.parent())
 
 
         except Exception as e:
@@ -150,6 +157,8 @@ class IDE(QMainWindow):
                          self.file_tree_view.setCurrentIndex(index)
                          # Opcional: Expandir o diretório pai no File Explorer
                          self.file_tree_view.expand(index.parent())
+                         # Atualiza a pasta atual do explorer para a pasta do arquivo aberto
+                         self.current_folder_path = QFileInfo(file_path).dir().absolutePath()
 
 
             except Exception as e:
@@ -217,9 +226,11 @@ class IDE(QMainWindow):
                     self.setWindowTitle(f'Minha IDE Simples - {QFileInfo(self.current_file_path).fileName()}') # Atualiza o título
                     print(f"Arquivo salvo: {self.current_file_path}")
                     # Atualizar o File Explorer pode ser necessário para refletir a renomeação/novo arquivo
-                    project_dir = QDir.currentPath()
-                    self.file_system_model.setRootPath(project_dir)
-                    self.file_tree_view.setRootIndex(self.file_system_model.index(project_dir))
+                    # Define a raiz do modelo e da view para a pasta onde o arquivo foi salvo
+                    saved_file_dir = QFileInfo(file_path).dir().absolutePath()
+                    self.file_system_model.setRootPath(saved_file_dir)
+                    self.file_tree_view.setRootIndex(self.file_system_model.index(saved_file_dir))
+                    self.current_folder_path = saved_file_dir # Atualiza a pasta atual do explorer
 
 
                 except Exception as e:
@@ -233,6 +244,7 @@ class IDE(QMainWindow):
         if folder_path:
             self.file_system_model.setRootPath(folder_path)
             self.file_tree_view.setRootIndex(self.file_system_model.index(folder_path))
+            self.current_folder_path = folder_path # Atualiza a pasta atual do explorer
             # Opcional: Limpar o editor e resetar o arquivo atual ao abrir uma nova pasta
             self.editor.clear()
             self.current_file_path = None
@@ -252,6 +264,9 @@ class IDE(QMainWindow):
                 self.editor.setPlainText(content)
                 self.current_file_path = file_path # Atualiza o caminho do arquivo atual
                 self.setWindowTitle(f'Minha IDE Simples - {QFileInfo(self.current_file_path).fileName()}') # Atualiza o título ao abrir do explorer
+                # Atualiza a pasta atual do explorer para a pasta do arquivo aberto
+                self.current_folder_path = QFileInfo(file_path).dir().absolutePath()
+
         except Exception as e:
             print(f"Erro ao abrir o arquivo: {e}")
 
