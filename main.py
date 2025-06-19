@@ -89,7 +89,28 @@ class IDE(QMainWindow):
         print("Action \'Novo\' triggered")
         self.editor.clear() # Limpa o conteúdo do editor
         self.current_file_path = None # Reseta o caminho do arquivo atual
-        self.setWindowTitle('Minha IDE Simples - Sem Título') # Atualiza o título da janela
+
+        default_file_name = "sem titulo.txt"
+        project_dir = QDir.currentPath()
+        new_file_path = QDir(project_dir).filePath(default_file_name)
+
+        try:
+            # Tenta criar e salvar um arquivo vazio com o nome padrão
+            with open(new_file_path, 'w', encoding='utf-8') as f:
+                f.write("") # Salva um arquivo vazio
+            self.current_file_path = new_file_path # Atualiza o caminho do arquivo atual
+            self.setWindowTitle(f'Minha IDE Simples - {QDir(self.current_file_path).fileName()}') # Atualiza o título da janela
+            print(f"Novo arquivo criado: {self.current_file_path}")
+
+            # Opcional: Forçar atualização do File Explorer, se necessário
+            self.file_system_model.setRootPath(project_dir) # Pode ajudar a garantir que o novo arquivo apareça
+
+
+        except Exception as e:
+            print(f"Erro ao criar novo arquivo: {e}")
+            # Em caso de erro, você pode querer voltar ao estado de "sem título"
+            self.current_file_path = None
+            self.setWindowTitle('Minha IDE Simples - Sem Título')
 
 
     def open_file(self):
