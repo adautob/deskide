@@ -14,7 +14,7 @@ class IDE(QMainWindow):
         self.initUI()
 
     def initUI(self):
-        self.setWindowTitle('Minha IDE Simples')
+        self.setWindowTitle('Minha IDE Simples - Sem Título') # Define o título inicial
         self.setGeometry(100, 100, 1000, 800) # Ajusta o tamanho da janela
 
         # Widget central
@@ -87,7 +87,10 @@ class IDE(QMainWindow):
     # Placeholder methods for file operations
     def new_file(self):
         print("Action \'Novo\' triggered")
-        # Implementar lógica para criar novo arquivo no editor e, possivelmente, no file explorer
+        self.editor.clear() # Limpa o conteúdo do editor
+        self.current_file_path = None # Reseta o caminho do arquivo atual
+        self.setWindowTitle('Minha IDE Simples - Sem Título') # Atualiza o título da janela
+
 
     def open_file(self):
         options = QFileDialog.Options()
