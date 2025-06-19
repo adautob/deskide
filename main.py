@@ -166,7 +166,9 @@ class IDE(QMainWindow):
         else:
             print("Operação de abrir arquivo cancelada.")
 
-    def save_file(self):
+def save_file(self):
+        print("Método save_file chamado") # Debug print
+
         # Usar regex para verificar se o nome do arquivo atual corresponde ao padrão "sem titulo"
         is_untitled = False
         if self.current_file_path:
@@ -177,8 +179,13 @@ class IDE(QMainWindow):
             if re.match(pattern, file_name):
                 is_untitled = True
 
+        print(f"current_file_path: {self.current_file_path}") # Debug print
+        print(f"is_untitled: {is_untitled}") # Debug print
+
+
         if self.current_file_path and not is_untitled:
             # Salvar em arquivo existente (não "sem titulo")
+            print("Tentando salvar em arquivo existente") # Debug print
             try:
                 content = self.editor.toPlainText()
                 with open(self.current_file_path, 'w', encoding='utf-8') as f:
@@ -188,6 +195,7 @@ class IDE(QMainWindow):
                 print(f"Erro ao salvar o arquivo: {e}")
         else:
             # "Salvar como" para arquivos sem título ou sem caminho definido
+            print("Executando 'Salvar como'") # Debug print
             options = QFileDialog.Options()
 
             # Sugerir o nome atual se for um arquivo "sem titulo"
@@ -203,6 +211,8 @@ class IDE(QMainWindow):
 
 
             file_path, _ = QFileDialog.getSaveFileName(self, "Salvar Arquivo", initial_file_name, "Todos os Arquivos (*);;Arquivos de Texto (*.txt)", options=options)
+            print(f"Caminho retornado por getSaveFileName: {file_path}") # Debug print
+
 
             if file_path:
                 try:
@@ -236,7 +246,7 @@ class IDE(QMainWindow):
                 except Exception as e:
                     print(f"Erro ao salvar o arquivo: {e}")
             else:
-                print("Operação de salvar cancelada.")
+                print("Operação de salvar cancelada.") # Debug print
 
 
     def open_folder(self):
