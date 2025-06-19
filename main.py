@@ -84,6 +84,7 @@ class IDE(QMainWindow):
         save_as_action = QAction('Salvar &como...', self) # Use & para atalho (Alt+C)
         save_as_action.triggered.connect(self.save_file_as)
         file_menu.addAction(save_as_action)
+        save_action.triggered.connect(self.save_file) # Esta linha conecta a ação ao método
 
 
         # Ações do menu Projeto
