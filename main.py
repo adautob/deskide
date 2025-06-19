@@ -158,7 +158,18 @@ class IDE(QMainWindow):
             print("Operação de abrir arquivo cancelada.")
 
     def save_file(self):
+        # Usar regex para verificar se o nome do arquivo atual corresponde ao padrão "sem titulo"
+        is_untitled = False
         if self.current_file_path:
+            file_info = QFileInfo(self.current_file_path)
+            file_name = file_info.fileName()
+            import re
+            pattern = r"^sem titulo(\s\d+)?\.txt$"
+            if re.match(pattern, file_name):
+                is_untitled = True
+
+        if self.current_file_path and not is_untitled:
+            # Salvar em arquivo existente (não "sem titulo")
             try:
                 content = self.editor.toPlainText()
                 with open(self.current_file_path, 'w', encoding='utf-8') as f:
@@ -167,19 +178,50 @@ class IDE(QMainWindow):
             except Exception as e:
                 print(f"Erro ao salvar o arquivo: {e}")
         else:
-            # Se não houver arquivo atual, solicitar ao usuário onde salvar
+            # "Salvar como" para arquivos sem título ou sem caminho definido
             options = QFileDialog.Options()
-            file_path, _ = QFileDialog.getSaveFileName(self, "Salvar Arquivo", "", "Todos os Arquivos (*);;Arquivos de Texto (*.txt)", options=options)
+
+            # Sugerir o nome atual se for um arquivo "sem titulo"
+            initial_file_name = ""
+            if self.current_file_path: # Verificar se self.current_file_path não é None antes de tentar obter o nome
+                 file_info = QFileInfo(self.current_file_path)
+                 file_name = file_info.fileName()
+                 # Re-verificar o padrão aqui para garantir que sugere apenas para "sem titulo"
+                 import re
+                 pattern = r"^sem titulo(\s\d+)?\.txt$"
+                 if re.match(pattern, file_name):
+                     initial_file_name = file_name
+
+
+            file_path, _ = QFileDialog.getSaveFileName(self, "Salvar Arquivo", initial_file_name, "Todos os Arquivos (*);;Arquivos de Texto (*.txt)", options=options)
+
             if file_path:
                 try:
                     content = self.editor.toPlainText()
+
+                    # TODO: Implementar exclusão do arquivo antigo "sem titulo" se o nome mudar
+                    # Importar os para usar os.remove()
+                    # import os
+                    # if is_untitled and file_path != self.current_file_path and os.path.exists(self.current_file_path):
+                    #     try:
+                    #         os.remove(self.current_file_path)
+                    #         print(f"Arquivo antigo excluído: {self.current_file_path}")
+                    #     except Exception as e:
+                    #         print(f"Erro ao excluir arquivo antigo: {e}")
+
+
                     with open(file_path, 'w', encoding='utf-8') as f:
                         f.write(content)
+
                     self.current_file_path = file_path # Atualiza o caminho do arquivo atual
-                    self.setWindowTitle(f'Minha IDE Simples - {QFileInfo(self.current_file_path).fileName()}') # Atualiza o título ao salvar novo
+                    self.setWindowTitle(f'Minha IDE Simples - {QFileInfo(self.current_file_path).fileName()}') # Atualiza o título
                     print(f"Arquivo salvo: {self.current_file_path}")
-                    # Opcional: Atualizar o File Explorer para mostrar o novo arquivo/caminho
-                    # self.file_system_model.setRootPath(QDir(file_path).cdUp().absolutePath()) # Pode ser útil ajustar a view
+                    # Atualizar o File Explorer pode ser necessário para refletir a renomeação/novo arquivo
+                    project_dir = QDir.currentPath()
+                    self.file_system_model.setRootPath(project_dir)
+                    self.file_tree_view.setRootIndex(self.file_system_model.index(project_dir))
+
+
                 except Exception as e:
                     print(f"Erro ao salvar o arquivo: {e}")
             else:
