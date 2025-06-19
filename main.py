@@ -4,7 +4,7 @@ from PyQt5.QtWidgets import (QApplication, QMainWindow, QVBoxLayout, QWidget,
 from PyQt5.QtGui import QIcon
 from PyQt5.QtCore import QDir, Qt, QFileInfo
 from PyQt5.QtWidgets import QFileSystemModel
-import os # Importação adicionada
+import os # Importação necessária para exclusão
 
 from editor import CodeEditor
 
@@ -79,7 +79,12 @@ class IDE(QMainWindow):
         save_action = QAction('&Salvar', self)
         save_action.setShortcut('Ctrl+S')
         file_menu.addAction(save_action)
-        save_action.triggered.connect(self.save_file) # Esta linha conecta a ação ao método
+
+        # **Adiciona a ação "Salvar como..."**
+        save_as_action = QAction('Salvar &como...', self) # Use & para atalho (Alt+C)
+        save_as_action.triggered.connect(self.save_file_as)
+        file_menu.addAction(save_as_action)
+
 
         # Ações do menu Projeto
         open_folder_action = QAction('&Abrir Pasta...', self)
@@ -212,7 +217,7 @@ class IDE(QMainWindow):
                 try:
                     content = self.editor.toPlainText()
 
-                    # Implementar exclusão do arquivo antigo "sem titulo" se o nome mudar
+                    # Implementar exclusão do arquivo antigo "sem titulo" se o nome mudou
                     # Usar original_file_path para a verificação
                     if is_untitled and original_file_path and file_path != original_file_path and os.path.exists(original_file_path):
                         try:
@@ -240,6 +245,48 @@ class IDE(QMainWindow):
                     print(f"Erro ao salvar o arquivo: {e}")
             else:
                 print("Operação de salvar cancelada.")
+
+    # **Novo método para "Salvar como"**
+    def save_file_as(self):
+        print("Action \'Salvar como...\' triggered")
+        options = QFileDialog.Options()
+
+        # Sugerir o nome do arquivo atual (se houver) como nome inicial
+        initial_file_name = ""
+        if self.current_file_path:
+            initial_file_name = QFileInfo(self.current_file_path).fileName()
+
+
+        # Abrir o diálogo de salvar sempre
+        file_path, _ = QFileDialog.getSaveFileName(self, "Salvar Arquivo como", self.current_folder_path, "Todos os Arquivos (*);;Arquivos de Texto (*.txt)", initial_file_name, options=options)
+
+        if file_path:
+            try:
+                content = self.editor.toPlainText()
+
+                # Para "Salvar como", geralmente não excluímos o arquivo original
+                # a menos que seja um caso específico de renomear um "sem titulo"
+                # A lógica de exclusão para "sem titulo" ao salvar já está em save_file
+                # Se precisar de lógica de exclusão aqui, seria para casos diferentes
+
+
+                with open(file_path, 'w', encoding='utf-8') as f:
+                    f.write(content)
+
+                self.current_file_path = file_path # Atualiza o caminho do arquivo atual para o novo
+                self.setWindowTitle(f'Minha IDE Simples - {QFileInfo(self.current_file_path).fileName()}') # Atualiza o título
+                print(f"Arquivo salvo como: {self.current_file_path}")
+                # Atualizar o File Explorer para refletir o novo arquivo/caminho
+                saved_file_dir = QFileInfo(file_path).dir().absolutePath()
+                self.file_system_model.setRootPath(saved_file_dir)
+                self.file_tree_view.setRootIndex(self.file_system_model.index(saved_file_dir))
+                self.current_folder_path = saved_file_dir # Atualiza a pasta atual do explorer
+
+
+            except Exception as e:
+                print(f"Erro ao salvar arquivo como: {e}")
+        else:
+            print("Operação de salvar como cancelada.")
 
 
     def open_folder(self):
