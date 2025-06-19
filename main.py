@@ -2,7 +2,7 @@ import sys
 from PyQt5.QtWidgets import (QApplication, QMainWindow, QVBoxLayout, QWidget,
                              QMenuBar, QMenu, QAction, QTreeView, QSplitter, QFileDialog)
 from PyQt5.QtGui import QIcon
-from PyQt5.QtCore import QDir, Qt, QFileInfo # Adicionada QFileInfo aqui
+from PyQt5.QtCore import QDir, Qt, QFileInfo
 from PyQt5.QtWidgets import QFileSystemModel
 
 from editor import CodeEditor
@@ -31,12 +31,12 @@ class IDE(QMainWindow):
 
         # File Explorer
         self.file_system_model = QFileSystemModel()
-        self.file_system_model.setRootPath(QDir.currentPath()) # Define o diretório raiz
+        self.file_system_model.setRootPath(QDir.currentPath()) # Define o diretório raiz inicial
         self.file_system_model.setFilter(QDir.NoDotAndDotDot | QDir.AllDirs | QDir.Files) # Filtra arquivos e diretórios
 
         self.file_tree_view = QTreeView()
         self.file_tree_view.setModel(self.file_system_model)
-        self.file_tree_view.setRootIndex(self.file_system_model.index(QDir.currentPath())) # Define o índice raiz
+        self.file_tree_view.setRootIndex(self.file_system_model.index(QDir.currentPath())) # Define o índice raiz inicial
         self.file_tree_view.doubleClicked.connect(self.open_file_from_explorer) # Conecta o double click
 
         # Oculta colunas desnecessárias (tamanho, tipo, data)
@@ -73,7 +73,7 @@ class IDE(QMainWindow):
 
         save_action = QAction('&Salvar', self)
         save_action.setShortcut('Ctrl+S')
-        file_menu.addAction(save_action)
+        file_menu.addAction(save_action) # Corrigido para usar file_menu
 
         # Ações do menu Projeto
         open_folder_action = QAction('&Abrir Pasta...', self)
@@ -101,8 +101,13 @@ class IDE(QMainWindow):
             self.setWindowTitle(f'Minha IDE Simples - {QFileInfo(self.current_file_path).fileName()}') # Atualiza o título da janela com QFileInfo
             print(f"Novo arquivo criado: {self.current_file_path}")
 
-            # Opcional: Forçar atualização do File Explorer, se necessário
-            self.file_system_model.setRootPath(project_dir) # Pode ajudar a garantir que o novo arquivo apareça
+            # **Atualizar o File Explorer para mostrar o novo arquivo**
+            self.file_system_model.setRootPath(project_dir) # Define a raiz do modelo
+            self.file_tree_view.setRootIndex(self.file_system_model.index(project_dir)) # Define a raiz da view
+            # Opcional: Selecionar o novo arquivo no File Explorer
+            index = self.file_system_model.index(self.current_file_path)
+            if index.isValid():
+                 self.file_tree_view.setCurrentIndex(index)
 
 
         except Exception as e:
@@ -171,6 +176,10 @@ class IDE(QMainWindow):
         if folder_path:
             self.file_system_model.setRootPath(folder_path)
             self.file_tree_view.setRootIndex(self.file_system_model.index(folder_path))
+            # Opcional: Limpar o editor e resetar o arquivo atual ao abrir uma nova pasta
+            self.editor.clear()
+            self.current_file_path = None
+            self.setWindowTitle('Minha IDE Simples - Sem Título')
             print(f"Pasta aberta: {folder_path}")
 
 
