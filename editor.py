@@ -23,7 +23,8 @@ class LineNumberArea(QWidget):
 
         block = self.editor.firstVisibleBlock()
         block_number = block.blockNumber()
-        top = self.editor.blockBoundingGeometry(block).translated(self.editor.contentOffset()).top()
+        # Calcular a posição top usando a geometria do bloco e o deslocamento da barra de rolagem
+        top = self.editor.blockBoundingGeometry(block).top() - self.editor.verticalScrollBar().sliderPosition()
         bottom = top + self.editor.blockBoundingRect(block).height()
 
         # Loop sobre os blocos visíveis
@@ -31,7 +32,7 @@ class LineNumberArea(QWidget):
             if block.isVisible() and bottom >= event.rect().top():
                 number = str(block_number + 1)
                 painter.setPen(Qt.black)
-                painter.drawText(0, top, self.size().width(), self.editor.fontMetrics().height(),
+                painter.drawText(0, round(top), self.size().width(), self.editor.fontMetrics().height(), # Usar round() para posições y
                                  Qt.AlignRight | Qt.AlignVCenter, number)
 
             block = block.next()
@@ -168,7 +169,7 @@ class CodeEditor(QTextEdit):
         self.verticalScrollBar().valueChanged.connect(self.lineNumberArea.update) # Sincroniza com a barra de rolagem
         self.document().blockCountChanged.connect(self.updateLineNumberAreaWidth) # Atualiza largura quando o número de blocos muda
         self.document().contentsChange.connect(self.updateLineNumberArea) # Atualiza numeração quando o conteúdo muda
-
+        self.updateRequest.connect(self.lineNumberArea.update) # Conecta updateRequest para garantir atualização
 
         self.updateLineNumberAreaWidth(0) # Define a largura inicial
 
@@ -196,14 +197,21 @@ class CodeEditor(QTextEdit):
 
     def firstVisibleBlock(self):
         # Retorna o primeiro bloco (linha) visível no editor
-        # Itera para encontrar o primeiro bloco que tem y >= 0 e está visível
-        offset = self.contentOffset()
+        # Iterar pelos blocos até encontrar um cuja geometria esteja dentro ou acima da viewport
+        # considerando o deslocamento da barra de rolagem
         block = self.document().firstBlock()
+        vscroll_pos = self.verticalScrollBar().sliderPosition()
+
         while block.isValid():
             block_geometry = self.blockBoundingGeometry(block)
-            if block_geometry.translated(offset).top() >= 0 and block.isVisible():
-                return block
+            block_top_in_viewport = block_geometry.top() - vscroll_pos
+
+            # Se o topo do bloco está dentro ou acima da área visível (>= 0), é o primeiro visível
+            if block_top_in_viewport >= -block_geometry.height() and block.isVisible():
+                 return block
+
             block = block.next()
+
         return self.document().firstBlock() # Retorna o primeiro bloco se nenhum visível for encontrado (improvável)
 
 
