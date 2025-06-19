@@ -79,6 +79,7 @@ class IDE(QMainWindow):
         save_action = QAction('&Salvar', self)
         save_action.setShortcut('Ctrl+S')
         file_menu.addAction(save_action)
+        save_action.triggered.connect(self.save_file) # Esta linha conecta a ação ao método
 
         # Ações do menu Projeto
         open_folder_action = QAction('&Abrir Pasta...', self)
