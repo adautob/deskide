@@ -1,5 +1,10 @@
 import sys
-from PyQt5.QtWidgets import QApplication, QMainWindow, QVBoxLayout, QWidget, QMenuBar, QMenu, QAction
+from PyQt5.QtWidgets import (QApplication, QMainWindow, QVBoxLayout, QWidget,
+                             QMenuBar, QMenu, QAction, QTreeView, QSplitter, QFileDialog)
+from PyQt5.QtGui import QIcon
+from PyQt5.QtCore import QDir, Qt
+from PyQt5.QtWidgets import QFileSystemModel
+
 from editor import CodeEditor
 
 class IDE(QMainWindow):
@@ -10,7 +15,7 @@ class IDE(QMainWindow):
 
     def initUI(self):
         self.setWindowTitle('Minha IDE Simples')
-        self.setGeometry(100, 100, 800, 600) # Posição e tamanho da janela
+        self.setGeometry(100, 100, 1000, 800) # Ajusta o tamanho da janela
 
         # Widget central
         central_widget = QWidget()
@@ -20,15 +25,37 @@ class IDE(QMainWindow):
         layout = QVBoxLayout()
         central_widget.setLayout(layout)
 
-        # Editor de texto (inicialmente um QTextEdit simples)
-        self.editor = CodeEditor()
-        layout.addWidget(self.editor)
+        # Splitter para dividir o File Explorer e o Editor
+        splitter = QSplitter(Qt.Horizontal)
+        layout.addWidget(splitter)
 
-        # Aqui você adicionaria outros widgets como navegador de arquivos, terminal, etc.
+        # File Explorer
+        self.file_system_model = QFileSystemModel()
+        self.file_system_model.setRootPath(QDir.currentPath()) # Define o diretório raiz
+        self.file_system_model.setFilter(QDir.NoDotAndDotDot | QDir.AllDirs | QDir.Files) # Filtra arquivos e diretórios
+
+        self.file_tree_view = QTreeView()
+        self.file_tree_view.setModel(self.file_system_model)
+        self.file_tree_view.setRootIndex(self.file_system_model.index(QDir.currentPath())) # Define o índice raiz
+        self.file_tree_view.doubleClicked.connect(self.open_file_from_explorer) # Conecta o double click
+
+        # Oculta colunas desnecessárias (tamanho, tipo, data)
+        for i in range(1, 4):
+            self.file_tree_view.hideColumn(i)
+
+        splitter.addWidget(self.file_tree_view)
+
+        # Editor de texto
+        self.editor = CodeEditor()
+        splitter.addWidget(self.editor)
+
+        # Define a proporção inicial do splitter
+        splitter.setSizes([200, 800]) # 200px para o file explorer, 800px para o editor
 
         # Barra de Menu
         menubar = self.menuBar()
         file_menu = menubar.addMenu('&Arquivo') # Use & para atalho (Alt+A)
+        project_menu = menubar.addMenu('&Projeto') # Novo menu para ações do projeto
 
         # Ações de arquivo
         new_action = QAction('&Novo', self)
@@ -36,27 +63,60 @@ class IDE(QMainWindow):
         new_action.triggered.connect(self.new_file)
         file_menu.addAction(new_action)
 
-        open_action = QAction('&Abrir...', self)
-        open_action.setShortcut('Ctrl+O')
-        open_action.triggered.connect(self.open_file)
-        file_menu.addAction(open_action)
+        open_file_action = QAction('&Abrir Arquivo...', self)
+        open_file_action.setShortcut('Ctrl+O')
+        open_file_action.triggered.connect(self.open_file)
+        file_menu.addAction(open_file_action)
 
         save_action = QAction('&Salvar', self)
         save_action.setShortcut('Ctrl+S')
         save_action.triggered.connect(self.save_file)
         file_menu.addAction(save_action)
 
+        # Ações do menu Projeto
+        open_folder_action = QAction('&Abrir Pasta...', self)
+        open_folder_action.triggered.connect(self.open_folder)
+        project_menu.addAction(open_folder_action)
+
+
         self.show()
 
     # Placeholder methods for file operations
     def new_file(self):
-        print("Action 'Novo' triggered")
+        print("Action \'Novo\' triggered")
+        # Implementar lógica para criar novo arquivo no editor e, possivelmente, no file explorer
 
     def open_file(self):
-        print("Action 'Abrir' triggered")
+        print("Action \'Abrir Arquivo\' triggered")
+        # Implementar lógica para abrir arquivo via diálogo e carregar no editor
 
     def save_file(self):
-        print("Action 'Salvar' triggered")
+        print("Action \'Salvar\' triggered")
+        # Implementar lógica para salvar conteúdo do editor
+
+    def open_folder(self):
+        folder_path = QFileDialog.getExistingDirectory(self, "Abrir Pasta", QDir.currentPath())
+        if folder_path:
+            self.file_system_model.setRootPath(folder_path)
+            self.file_tree_view.setRootIndex(self.file_system_model.index(folder_path))
+            print(f"Pasta aberta: {folder_path}")
+
+
+    def open_file_from_explorer(self, index):
+        if self.file_system_model.isDir(index):
+            return # Não faz nada se for um diretório
+
+        file_path = self.file_system_model.filePath(index)
+        print(f"Abrir arquivo do explorer: {file_path}")
+        # Implementar lógica para ler o conteúdo do arquivo e carregar no self.editor
+        try:
+            with open(file_path, 'r', encoding='utf-8') as f:
+                content = f.read()
+                self.editor.setPlainText(content)
+        except Exception as e:
+            print(f"Erro ao abrir o arquivo: {e}")
+
+
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
