@@ -166,7 +166,7 @@ class IDE(QMainWindow):
         else:
             print("Operação de abrir arquivo cancelada.")
 
-def save_file(self):
+    def save_file(self):
         print("Método save_file chamado") # Debug print
 
         # Usar regex para verificar se o nome do arquivo atual corresponde ao padrão "sem titulo"
