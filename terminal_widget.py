@@ -182,22 +182,21 @@ class CustomTerminalWidget(QPlainTextEdit):
                 cursor.movePosition(cursor.StartOfLine, cursor.KeepAnchor)
                 current_line_text = cursor.selectedText()
 
-                # **Debug prints para inspecionar os valores antes do fatiamento**
-                print(f"keyPressEvent (Enter): current_line_text = {repr(current_line_text)}")
-                print(f"keyPressEvent (Enter): len(current_line_text) = {len(current_line_text)}")
-                print(f"keyPressEvent (Enter): self.command_start_position = {self.command_start_position}")
-                print(f"keyPressEvent (Enter): cursor_position_in_document (before Enter) = {cursor_position_in_document}")
-                print(f"keyPressEvent (Enter): cursor.block().position() = {cursor.block().position()}")
+                # ... (debug prints) ...
 
 
-                # **CORREÇÃO FINAL (Tentativa 4):** Encontrar a posição do prompt na linha atual e fatiar a partir daí.
-                prompt_end_index = current_line_text.rfind('>') # Encontra o último '>' (heurística para prompt do CMD)
-                if prompt_end_index != -1:
-                    # Adiciona 2 para pular o "> "
-                    command_start_pos_in_line = prompt_end_index + 2
+                # **CORREÇÃO FINAL (Tentativa 5):** Encontrar a posição do prompt na linha atual e fatiar a partir daí.
+                prompt_end_index = current_line_text.rfind('>') # Encontra o último '>'
+                if prompt_end_index != -1 and prompt_end_index + 1 < len(current_line_text) and current_line_text[prompt_end_index + 1] == ' ':
+                    # Se houver um '>' seguido por um espaço
+                    command_start_pos_in_line = prompt_end_index + 2 # Pula o "> "
+                elif prompt_end_index != -1:
+                    # Se houver apenas um '>' (sem espaço, menos comum para prompt)
+                    command_start_pos_in_line = prompt_end_index + 1 # Pula apenas o ">"
                 else:
                     # Caso o prompt não seja encontrado (inesperado, mas seguro)
                     command_start_pos_in_line = 0 # Começa do início da linha
+
 
                 # Calcular a posição do cursor antes do Enter, relativa à linha
                 cursor_pos_in_line = cursor_position_in_document - cursor.block().position()
