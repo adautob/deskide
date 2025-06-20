@@ -238,7 +238,7 @@ def update_send_button_status(self, thinking):
     if thinking:
         self.send_button.setText("Pensando...")
         self.send_button.setDisabled(True)
-    self.user_input.setDisabled(True)
+        self.user_input.setDisabled(True)
     else:
         self.send_button.setText("Enviar")
         self.send_button.setDisabled(False)
