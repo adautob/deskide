@@ -1,3 +1,5 @@
+# No arquivo ai_chat_widget.py
+
 import sys
 import re # Importar o módulo re
 import html # Importar o módulo html para escapar caracteres especiais
@@ -115,7 +117,6 @@ class AIChatWidget(QWidget):
 
         # Processar a mensagem para formatar blocos de código
         # Padrão regex para encontrar blocos de código Markdown (ignora a linguagem após) # Captura o conteúdo dentro do bloco de código code_block_pattern = re.compile(r'(?:\w+)?\n(.*?)\n', re.DOTALL)
-
         last_end = 0
         parts = []
         for match in code_block_pattern.finditer(message):
@@ -128,7 +129,6 @@ class AIChatWidget(QWidget):
             # Adicionar o bloco de código formatado (usando tags HTML básicas para fonte monoespaçada e pré-formatado)
             code_content = match.group(1) # O conteúdo dentro do bloco de código
             # Escapar caracteres HTML especiais dentro do código (como <, >, &)
-            import html
             escaped_code_content = html.escape(code_content)
 
             # Usar <pre> e <code> para pré-formatar e garantir fonte monoespaçada
@@ -151,7 +151,6 @@ class AIChatWidget(QWidget):
         # Adicionar a mensagem formatada ao histórico (combinando remetente e conteúdo)
         self.history_display.append(formatted_message + content_html + "<br>") # Adiciona a mensagem completa
         self.history_display.ensureCursorVisible()
-
 
 
     def send_message(self):
@@ -221,17 +220,17 @@ def handle_api_task_finished(self):
 
 @pyqtSlot() # Novo slot para a reabilitação da UI agendada
 def _re_enable_ui(self):
-     print("--> Início _re_enable_ui")
-     try:
-         print("Executando reabilitação da UI: user_input e send_button.")
-         self.user_input.setDisabled(False)
-         self.send_button.setDisabled(False)
-         self.user_input.setFocus()
-         self.thinking_status.emit(False)
-         print("UI reabilitada com sucesso em _re_enable_ui.")
-     except Exception as e:
-         print(f"Erro durante execução da reabilitação da UI em _re_enable_ui: {e}")
-     print("<-- Fim _re_enable_ui")
+    print("--> Início _re_enable_ui")
+    try:
+        print("Executando reabilitação da UI: user_input e send_button.")
+        self.user_input.setDisabled(False)
+        self.send_button.setDisabled(False)
+        self.user_input.setFocus()
+        self.thinking_status.emit(False)
+        print("UI reabilitada com sucesso em _re_enable_ui.")
+    except Exception as e:
+        print(f"Erro durante execução da reabilitação da UI em _re_enable_ui: {e}")
+    print("<-- Fim _re_enable_ui")
 
 
 @pyqtSlot(bool)
@@ -239,7 +238,7 @@ def update_send_button_status(self, thinking):
     if thinking:
         self.send_button.setText("Pensando...")
         self.send_button.setDisabled(True)
-        self.user_input.setDisabled(True)
+    self.user_input.setDisabled(True)
     else:
         self.send_button.setText("Enviar")
         self.send_button.setDisabled(False)
