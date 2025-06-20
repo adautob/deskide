@@ -377,7 +377,7 @@ class IDE(QMainWindow):
                  self.tab_widget.removeTab(0)
 
             self.setWindowTitle('Minha IDE Simples - Sem Título')
-            # current_file_path agora é por editor, então não precisa resetar self.current_file_path aqui.
+            # current_file_path é por editor, então não precisa resetar self.current_file_path aqui.
 
 
     def open_file_from_explorer(self, index):
