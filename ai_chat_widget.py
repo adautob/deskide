@@ -170,7 +170,7 @@ class AIChatWidget(QWidget):
 
 
 
-# No arquivo ai_chat_widget.py, dentro da classe AIChatWidget:
+    # No arquivo ai_chat_widget.py, dentro da classe AIChatWidget:
 
     def send_message(self):
         if not self.chat_session:
@@ -212,75 +212,75 @@ class AIChatWidget(QWidget):
 
 
 
-@pyqtSlot(str)
-def receive_ai_response(self, ai_text):
-    print(f"Recebendo resposta da IA: {ai_text}")
-    # append_message agora lida com a formatação
-    self.append_message("IA", ai_text)
-    # Reabilitação da UI agora é agendada em handle_api_task_finished
+    @pyqtSlot(str)
+    def receive_ai_response(self, ai_text):
+        print(f"Recebendo resposta da IA: {ai_text}")
+        # append_message agora lida com a formatação
+        self.append_message("IA", ai_text)
+        # Reabilitação da UI agora é agendada em handle_api_task_finished
 
 
-@pyqtSlot(str)
-def handle_ai_error(self, error_message):
-    print(f"Erro da API da IA: {error_message}")
-    self.append_message("Sistema", f"Erro na comunicação com a IA: {error_message}")
-    # Reabilitação da UI agora é agendada em handle_api_task_finished
+    @pyqtSlot(str)
+    def handle_ai_error(self, error_message):
+        print(f"Erro da API da IA: {error_message}")
+        self.append_message("Sistema", f"Erro na comunicação com a IA: {error_message}")
+        # Reabilitação da UI agora é agendada em handle_api_task_finished
 
 
-@pyqtSlot()
-def handle_api_task_finished(self):
-    print("--> Início handle_api_task_finished")
-    try:
-        print("Agendando reabilitação da UI com QTimer.singleShot(0).")
-        # **Agendar a reabilitação da UI na próxima iteração do loop de eventos**
-        QTimer.singleShot(0, self._re_enable_ui)
+    @pyqtSlot()
+    def handle_api_task_finished(self):
+        print("--> Início handle_api_task_finished")
+        try:
+            print("Agendando reabilitação da UI com QTimer.singleShot(0).")
+            # **Agendar a reabilitação da UI na próxima iteração do loop de eventos**
+            QTimer.singleShot(0, self._re_enable_ui)
 
-    except Exception as e:
-        print(f"Erro durante agendamento da reabilitação da UI: {e}")
-    print("<-- Fim handle_api_task_finished")
-
-
-@pyqtSlot() # Novo slot para a reabilitação da UI agendada
-def _re_enable_ui(self):
-     print("--> Início _re_enable_ui")
-     try:
-         print("Executando reabilitação da UI: user_input e send_button.")
-         self.user_input.setDisabled(False)
-         self.send_button.setDisabled(False)
-         self.user_input.setFocus()
-         self.thinking_status.emit(False)
-         print("UI reabilitada com sucesso em _re_enable_ui.")
-     except Exception as e:
-         print(f"Erro durante execução da reabilitação da UI em _re_enable_ui: {e}")
-     print("<-- Fim _re_enable_ui")
+        except Exception as e:
+            print(f"Erro durante agendamento da reabilitação da UI: {e}")
+        print("<-- Fim handle_api_task_finished")
 
 
-@pyqtSlot(bool)
-def update_send_button_status(self, thinking):
-    if thinking:
-        self.send_button.setText("Pensando...")
-        self.send_button.setDisabled(True)
-        self.user_input.setDisabled(True)
-    else:
-        self.send_button.setText("Enviar")
-        self.send_button.setDisabled(False)
-        self.user_input.setDisabled(False)
-        # self.user_input.setFocus() # Não definir foco aqui, pois pode interferir com outras ações
+    @pyqtSlot() # Novo slot para a reabilitação da UI agendada
+    def _re_enable_ui(self):
+        print("--> Início _re_enable_ui")
+        try:
+            print("Executando reabilitação da UI: user_input e send_button.")
+            self.user_input.setDisabled(False)
+            self.send_button.setDisabled(False)
+            self.user_input.setFocus()
+            self.thinking_status.emit(False)
+            print("UI reabilitada com sucesso em _re_enable_ui.")
+        except Exception as e:
+            print(f"Erro durante execução da reabilitação da UI em _re_enable_ui: {e}")
+        print("<-- Fim _re_enable_ui")
 
-# Exemplo básico de uso (para teste individual do widget)
-if __name__ == '__main__':
-    app = QApplication(sys.argv)
-    # Substitua "SUA_CHAVE_DE_API" pela sua chave real para teste individual
-    # Gerencie sua chave de API de forma segura (variáveis de ambiente, arquivo de configuração)
-    # NUNCA inclua sua chave diretamente no código fonte compartilhado.
-    # Exemplo: ler de uma variável de ambiente
-    # import os
-    # api_key = os.environ.get("GEMINI_API_KEY")
-    api_key = "AIzaSyBZl62T-QP2U8aVtvcWY5k8Y2Dv4veeZeQ" # Substitua ou use o método seguro
 
-    chat_widget = AIChatWidget(api_key=api_key)
-    chat_widget.setWindowTitle("Chat de IA Básico com Gemini")
-    chat_widget.resize(400, 600)
-    chat_widget.show()
-    sys.exit(app.exec_())
+    @pyqtSlot(bool)
+    def update_send_button_status(self, thinking):
+        if thinking:
+            self.send_button.setText("Pensando...")
+            self.send_button.setDisabled(True)
+            self.user_input.setDisabled(True)
+        else:
+            self.send_button.setText("Enviar")
+            self.send_button.setDisabled(False)
+            self.user_input.setDisabled(False)
+            # self.user_input.setFocus() # Não definir foco aqui, pois pode interferir com outras ações
+
+    # Exemplo básico de uso (para teste individual do widget)
+    if __name__ == '__main__':
+        app = QApplication(sys.argv)
+        # Substitua "SUA_CHAVE_DE_API" pela sua chave real para teste individual
+        # Gerencie sua chave de API de forma segura (variáveis de ambiente, arquivo de configuração)
+        # NUNCA inclua sua chave diretamente no código fonte compartilhado.
+        # Exemplo: ler de uma variável de ambiente
+        # import os
+        # api_key = os.environ.get("GEMINI_API_KEY")
+        api_key = "AIzaSyBZl62T-QP2U8aVtvcWY5k8Y2Dv4veeZeQ" # Substitua ou use o método seguro
+
+        chat_widget = AIChatWidget(api_key=api_key)
+        chat_widget.setWindowTitle("Chat de IA Básico com Gemini")
+        chat_widget.resize(400, 600)
+        chat_widget.show()
+        sys.exit(app.exec_())
 
