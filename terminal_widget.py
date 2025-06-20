@@ -1,10 +1,12 @@
 import sys
 import subprocess
 from PyQt5.QtWidgets import QPlainTextEdit
-from PyQt5.QtCore import QProcess, QTextCodec, QByteArray, QIODevice, QTimer, Signal, Qt
-from PyQt5.QtCore import pyqtSignal as Signal # Importa pyqtSignal e renomeia como Signal
+# Modifique a linha abaixo: remova Signal
+from PyQt5.QtCore import QProcess, QTextCodec, QByteArray, QIODevice, QTimer, Qt
+# Adicione esta nova linha
+from PyQt5.QtCore import pyqtSignal as Signal
 import threading
-import os  # Importar os para encontrar o shell
+import os
 
 
 class CustomTerminalWidget(QPlainTextEdit):
