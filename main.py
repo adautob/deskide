@@ -130,9 +130,7 @@ class IDE(QMainWindow):
         project_menu.addAction(open_folder_action)
 
 
-        self.show()
-
-         # **Carregar e aplicar Qt Style Sheet**
+        # **Carregar e aplicar Qt Style Sheet**
         try:
             with open('style.qss', 'r', encoding='utf-8') as f:
                 QApplication.instance().setStyleSheet(f.read()) # <-- Mudança aqui
@@ -144,6 +142,8 @@ class IDE(QMainWindow):
             print("Erro: Arquivo 'style.qss' não encontrado.")
         except Exception as e:
             print(f"Erro ao carregar ou aplicar style sheet: {e}")
+
+        self.show()
 
     # Método auxiliar para obter o widget da aba ativa (pode ser um CodeEditor ou o AIChatWidget)
     def current_active_widget(self):
