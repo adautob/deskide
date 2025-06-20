@@ -1,13 +1,17 @@
 import sys
 from PyQt5.QtWidgets import (QApplication, QMainWindow, QVBoxLayout, QWidget,
-                             QMenuBar, QMenu, QAction, QTreeView, QSplitter, QFileDialog, QTabWidget) # Adicionado QTabWidget
+                             QMenuBar, QMenu, QAction, QTreeView, QSplitter, QFileDialog, QTabWidget)
 from PyQt5.QtGui import QIcon
 from PyQt5.QtCore import QDir, Qt, QFileInfo
 from PyQt5.QtWidgets import QFileSystemModel
-import os # Importação necessária para exclusão
-import re # Importação necessária para regex
+import os
+import re
 
-from editor import CodeEditor # Assumindo que editor.py foi atualizado com current_file_path na classe CodeEditor
+from editor import CodeEditor
+
+# **Importar o widget de terminal**
+from qtermwidget.terminal import QTermWidget
+
 
 class IDE(QMainWindow):
     def __init__(self):
@@ -16,62 +20,74 @@ class IDE(QMainWindow):
         self.initUI()
 
     def initUI(self):
-        self.setWindowTitle('Minha IDE Simples - Sem Título') # Define o título inicial
-        self.setGeometry(100, 100, 1000, 800) # Ajusta o tamanho da janela
+        self.setWindowTitle('Minha IDE Simples - Sem Título')
+        self.setGeometry(100, 100, 1200, 800) # Ajusta o tamanho da janela para acomodar o terminal
 
         # Widget central
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
 
-        # Layout principal
-        layout = QVBoxLayout()
-        central_widget.setLayout(layout)
+        # Layout principal (Vertical)
+        main_layout = QVBoxLayout()
+        central_widget.setLayout(main_layout)
 
-        # Splitter para dividir o File Explorer e o Editor (agora um TabWidget)
-        splitter = QSplitter(Qt.Horizontal)
-        layout.addWidget(splitter)
+        # Splitter principal para dividir a área superior (Explorer+Editor) da área inferior (Terminal)
+        top_bottom_splitter = QSplitter(Qt.Vertical)
+        main_layout.addWidget(top_bottom_splitter)
+
+
+        # Splitter superior para dividir o File Explorer e o Tab Widget (Editores)
+        top_splitter = QSplitter(Qt.Horizontal)
+        top_bottom_splitter.addWidget(top_splitter) # Adiciona o splitter superior ao splitter principal
 
         # File Explorer
         self.file_system_model = QFileSystemModel()
-        # Inicializa com o diretório atual do projeto
         initial_folder = QDir.currentPath()
         self.file_system_model.setRootPath(initial_folder)
-        self.file_system_model.setFilter(QDir.NoDotAndDotDot | QDir.AllDirs | QDir.Files) # Filtra arquivos e diretórios
+        self.file_system_model.setFilter(QDir.NoDotAndDotDot | QDir.AllDirs | QDir.Files)
 
         self.file_tree_view = QTreeView()
         self.file_tree_view.setModel(self.file_system_model)
-        self.file_tree_view.setRootIndex(self.file_system_model.index(initial_folder)) # Define o índice raiz inicial
-        self.file_tree_view.doubleClicked.connect(self.open_file_from_explorer) # Conecta o double click
+        self.file_tree_view.setRootIndex(self.file_system_model.index(initial_folder))
+        self.file_tree_view.doubleClicked.connect(self.open_file_from_explorer)
 
-        # Oculta colunas desnecessárias (tamanho, tipo, data)
         for i in range(1, 4):
             self.file_tree_view.hideColumn(i)
 
-        splitter.addWidget(self.file_tree_view)
+        top_splitter.addWidget(self.file_tree_view) # Adiciona ao splitter superior
 
-        # **Tab Widget para os editores**
-        self.tab_widget = QTabWidget() # Cria a instância e atribui a self.tab_widget
-        self.tab_widget.setTabsClosable(True) # Permite fechar abas
-        self.tab_widget.tabCloseRequested.connect(self.close_tab) # Conecta sinal para fechar abas
-        self.tab_widget.currentChanged.connect(self.update_title_on_tab_change) # Atualiza título ao mudar de aba
+        # Tab Widget para os editores
+        self.tab_widget = QTabWidget()
+        self.tab_widget.setTabsClosable(True)
+        self.tab_widget.tabCloseRequested.connect(self.close_tab)
+        self.tab_widget.currentChanged.connect(self.update_title_on_tab_change)
 
-        splitter.addWidget(self.tab_widget) # Adiciona o tab_widget ao splitter
+        top_splitter.addWidget(self.tab_widget) # Adiciona ao splitter superior
 
 
-        # Define a proporção inicial do splitter
-        splitter.setSizes([200, 800]) # 200px para o file explorer, 800px para o editor
+        # Define a proporção inicial do splitter superior
+        top_splitter.setSizes([200, 800])
+
+        # **Terminal Widget**
+        self.terminal_widget = QTermWidget() # Cria a instância do terminal
+        # Você pode configurar o shell, cores, etc. aqui se necessário
+        # self.terminal_widget.setShellProgram("bash") # Exemplo: definir o shell para bash
+        top_bottom_splitter.addWidget(self.terminal_widget) # Adiciona o terminal ao splitter principal
+
+        # Define a proporção inicial do splitter principal (área superior e terminal)
+        top_bottom_splitter.setSizes([600, 200]) # 600px para a área superior, 200px para o terminal
+
 
         # Variáveis para rastrear a pasta atual do explorer
-        # current_file_path agora é uma propriedade de cada CodeEditor
-        self.current_folder_path = initial_folder # Armazena a pasta atualmente exibida no explorer
+        self.current_folder_path = initial_folder
 
 
-        # Barra de Menu
+        # Barra de Menu (mantida)
         menubar = self.menuBar()
-        file_menu = menubar.addMenu('&Arquivo') # Use & para atalho (Alt+A)
-        project_menu = menubar.addMenu('&Projeto') # Novo menu para ações do projeto
+        file_menu = menubar.addMenu('&Arquivo')
+        project_menu = menubar.addMenu('&Projeto')
 
-        # Ações de arquivo
+        # Ações de arquivo (mantidas)
         new_action = QAction('&Novo', self)
         new_action.setShortcut('Ctrl+N')
         new_action.triggered.connect(self.new_file)
@@ -91,8 +107,7 @@ class IDE(QMainWindow):
         save_as_action.triggered.connect(self.save_file_as)
         file_menu.addAction(save_as_action)
 
-
-        # Ações do menu Projeto
+        # Ações do menu Projeto (mantidas)
         open_folder_action = QAction('&Abrir Pasta...', self)
         open_folder_action.triggered.connect(self.open_folder)
         project_menu.addAction(open_folder_action)
