@@ -120,6 +120,9 @@ class AIChatWidget(QWidget):
         self.append_message("IA", "Olá! Como posso ajudar com seu código hoje?")
 
     # **Método append_message modificado para formatar blocos de código**
+    # No arquivo ai_chat_widget.py, dentro da classe AIChatWidget:
+
+    # Método append_message modificado para formatar blocos de código
     def append_message(self, sender, message):
         formatted_message = f"<b>{sender}:</b> "
 
@@ -139,9 +142,10 @@ class AIChatWidget(QWidget):
             if self.code_delimiter_pattern.fullmatch(part):
                 # Extrair APENAS o conteúdo do código (remover as marcações)
                 code_content_match = self.code_content_pattern.search(part)
-                if code_content_match: code_content = code_content_match.group(1)
+                if code_content_match:
+                    code_content = code_content_match.group(1)
                     # Formatar o bloco de código
-                    import html # Garantir importação
+                    # import html # A importação de html deve estar no topo do arquivo
                     escaped_code_content = html.escape(code_content)
                     formatted_code = f"<pre><code style='font-family: \"Courier New\", Consolas, monospace; background-color: #f4f4f4; padding: 5px;'>{escaped_code_content}</code></pre>"
                     content_html += formatted_code
@@ -156,13 +160,14 @@ class AIChatWidget(QWidget):
                 content_html += part.replace('\n', '<br>')
 
 
-    # Debug print para inspecionar o HTML gerado (mantenha para verificar a correção)
-    print(f"HTML gerado para mensagem de {sender}: {formatted_message + content_html + '<br>'}")
+        # Debug print para inspecionar o HTML gerado (mantenha para verificar a correção)
+        print(f"HTML gerado para mensagem de {sender}: {formatted_message + content_html + '<br>'}")
 
 
-    # Adicionar a mensagem formatada ao histórico
-    self.history_display.append(formatted_message + content_html + "<br>")
-    self.history_display.ensureCursorVisible()
+        # Adicionar a mensagem formatada ao histórico
+        self.history_display.append(formatted_message + content_html + "<br>")
+        self.history_display.ensureCursorVisible()
+
 
 
 def send_message(self):
