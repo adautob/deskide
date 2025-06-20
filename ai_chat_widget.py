@@ -156,6 +156,8 @@ class AIChatWidget(QWidget):
         # Combinar todas as partes
         content_html = "".join(parts)
 
+        # **Debug print para inspecionar o HTML gerado**
+        print(f"HTML gerado para mensagem de {sender}: {formatted_message + content_html + '<br>'}")
 
         # Adicionar a mensagem formatada ao histórico (combinando remetente e conteúdo)
         self.history_display.append(formatted_message + content_html + "<br>") # Adiciona a mensagem completa
