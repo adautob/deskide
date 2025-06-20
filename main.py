@@ -60,13 +60,42 @@ class IDE(QMainWindow):
         for i in range(1, 4):
             self.file_tree_view.hideColumn(i)
 
-        top_splitter.addWidget(self.file_tree_view) # Adiciona ao splitter superior
+top_splitter.addWidget(self.file_tree_view) # Adiciona o File Explorer ao splitter superior
+
+        # **Tab Widget principal para a área de Editores E Chat**
+        # ESTA SEÇÃO PRECISA ESTAR AQUI, ANTES DE USAR self.main_tab_widget
+        self.main_tab_widget = QTabWidget() # <--- ESSA LINHA CRIA E ATRIBUI!
+        self.main_tab_widget.setTabsClosable(True)
+        self.main_tab_widget.tabCloseRequested.connect(self.close_tab)
+        self.main_tab_widget.currentChanged.connect(self.update_title_on_tab_change)
+
+        top_splitter.addWidget(self.main_tab_widget) # <--- ESSA LINHA ADICIONA AO SPLITTER
 
 
         # **Adicionar o widget de chat de IA como uma nova aba**
-        # Passa a chave de API para o widget de chat
+        # ESTA SEÇÃO DEVE VIR DEPOIS DA CRIAÇÃO DE self.main_tab_widget
         self.ai_chat_widget = AIChatWidget(api_key=self.gemini_api_key)
+        # A LINHA ABAIXO AGORA DEVE FUNCIONAR PORQUE main_tab_widget FOI CRIADO ANTES
         self.main_tab_widget.addTab(self.ai_chat_widget, "Chat de IA")
+
+        top_splitter.addWidget(self.file_tree_view) # Adiciona o File Explorer ao splitter superior
+
+        # **Tab Widget principal para a área de Editores E Chat**
+        # ESTA SEÇÃO PRECISA ESTAR AQUI, ANTES DE USAR self.main_tab_widget
+        self.main_tab_widget = QTabWidget() # <--- ESSA LINHA CRIA E ATRIBUI!
+        self.main_tab_widget.setTabsClosable(True)
+        self.main_tab_widget.tabCloseRequested.connect(self.close_tab)
+        self.main_tab_widget.currentChanged.connect(self.update_title_on_tab_change)
+
+        top_splitter.addWidget(self.main_tab_widget) # <--- ESSA LINHA ADICIONA AO SPLITTER
+
+
+        # **Adicionar o widget de chat de IA como uma nova aba**
+        # ESTA SEÇÃO DEVE VIR DEPOIS DA CRIAÇÃO DE self.main_tab_widget
+        self.ai_chat_widget = AIChatWidget(api_key=self.gemini_api_key)
+        # A LINHA ABAIXO AGORA DEVE FUNCIONAR PORQUE main_tab_widget FOI CRIADO ANTES
+        self.main_tab_widget.addTab(self.ai_chat_widget, "Chat de IA")
+
 
         # Os CodeEditors (editores de código) serão adicionados como outras abas
         # quando novos arquivos forem criados ou abertos.
