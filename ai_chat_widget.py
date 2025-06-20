@@ -82,7 +82,8 @@ class AIChatWidget(QWidget):
             self.append_message("Sistema", "Chave de API do Gemini não fornecida. O chat de IA não estará funcional.")
 
         # **Compilar a expressão regular para blocos de código e armazenar como variável de instância**
-        self.code_block_pattern = re.compile(r'(?:\w+)?\n(.*?)\n')
+        self.code_block_pattern = re.compile(r'(?:\w+)?\n(.*?)\n', re.DOTALL) # Regex corrigida
+        
 
         self.initUI()
         self.thinking_status.connect(self.update_send_button_status)
