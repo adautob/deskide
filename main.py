@@ -82,6 +82,7 @@ class IDE(QMainWindow):
         # Terminal Widget
         # Assumindo que CustomTerminalWidget está importado e funciona
         self.terminal_widget = CustomTerminalWidget()
+        self.terminal_widget.setObjectName("myTerminal") # <-- Dê um nome de objeto
         top_bottom_splitter.addWidget(self.terminal_widget)
 
         # Define a proporção inicial do splitter principal (área superior e terminal)

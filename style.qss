@@ -86,6 +86,24 @@ QTextEdit {
     /* border: 1px solid #333; */
 }
 
+/* Estilo para QPlainTextEdit (pode afetar o terminal se o seletor #myTerminal não funcionar) */
+QPlainTextEdit {
+    font-family: "Courier New", Consolas, monospace;
+    font-size: 10pt; /* Tamanho padrão para QPlainTextEdit */
+    background-color: #1a1a1a;
+    color: #cccccc;
+    border: none;
+}
+
+/* **Estilo específico para o widget de terminal pelo nome de objeto** */
+#myTerminal {
+    font-size: 14pt; /* Tamanho MAIOR para testar no terminal */
+    /* Você pode adicionar outras propriedades específicas do terminal aqui */
+    background-color: #0d0d0d; /* Fundo um pouco diferente para distinção */
+    color: #00ff00; /* Cor de texto verde hacker (para teste visual) */
+}
+
+
 /* Estilo para QLineEdit (Entrada no Chat) */
 QLineEdit {
     background-color: #3c3c3c;
