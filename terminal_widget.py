@@ -2,8 +2,9 @@ import sys
 import subprocess
 from PyQt5.QtWidgets import QPlainTextEdit
 from PyQt5.QtCore import QProcess, QTextCodec, QByteArray, QIODevice, QTimer, Signal, Qt
+from PyQt5.QtCore import pyqtSignal as Signal # Importa pyqtSignal e renomeia como Signal
 import threading
-import os # Importar os para encontrar o shell
+import os  # Importar os para encontrar o shell
 
 
 class CustomTerminalWidget(QPlainTextEdit):
@@ -28,7 +29,7 @@ class CustomTerminalWidget(QPlainTextEdit):
         self.shell_program = shell_program
         self.process = None
 
-        self.setReadOnly(False) # Permitir que o usuário digite
+        self.setReadOnly(False)  # Permitir que o usuário digite
         self.appendPlainText(f"Iniciando terminal com: {self.shell_program}...\n")
 
         # Conecta o sinal output_received ao slot para exibir a saída
@@ -44,10 +45,10 @@ class CustomTerminalWidget(QPlainTextEdit):
             self.process = subprocess.Popen(
                 self.shell_program,
                 stdin=subprocess.PIPE,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                text=True, # Decodifica stdout/stderr como texto
-                bufsize=1, # Buffer de linha para stdout/stderr
+                stdout=subprocess.PIPE,  # type: ignore
+                stderr=subprocess.PIPE,  # type: ignore
+                text=True,  # Decodifica stdout/stderr como texto
+                bufsize=1,  # Buffer de linha para stdout/stderr
                 universal_newlines=True # Sinônimo para text em versões mais recentes
             )
 
@@ -65,7 +66,7 @@ class CustomTerminalWidget(QPlainTextEdit):
     def read_output(self, pipe, is_stderr):
         # Lê a saída do pipe e emite um sinal para a UI thread
         try:
-            for line in iter(pipe.readline, ''):
+            for line in iter(pipe.readline, ''): # type: ignore
                 self.output_received.emit(line)
         except Exception as e:
             # Emite erro para a UI thread também
@@ -76,7 +77,7 @@ class CustomTerminalWidget(QPlainTextEdit):
     def send_command(self, command):
         if self.process and self.process.stdin:
             try:
-                self.process.stdin.write(command + '\n') # Envia o comando com uma quebra de linha
+                self.process.stdin.write(command + '\n')  # Envia o comando com uma quebra de linha
                 self.process.stdin.flush() # Garante que o comando seja enviado imediatamente
             except Exception as e:
                 self.appendPlainText(f"Erro ao enviar comando: {e}\n")
@@ -88,10 +89,10 @@ class CustomTerminalWidget(QPlainTextEdit):
     def closeEvent(self, event):
         if self.process:
             try:
-                self.process.terminate() # Tenta encerrar o processo gracefully
-                self.process.wait(timeout=1) # Espera um pouco pelo encerramento
+                self.process.terminate()  # Tenta encerrar o processo gracefully
+                self.process.wait(timeout=1)  # Espera um pouco pelo encerramento
             except subprocess.TimeoutExpired:
-                self.process.kill() # Se não encerrar, mata o processo
+                self.process.kill()  # Se não encerrar, mata o processo
             except Exception as e:
                 print(f"Erro ao encerrar processo do shell: {e}") # Imprime no console de depuração
 
@@ -106,7 +107,7 @@ class CustomTerminalWidget(QPlainTextEdit):
             if event.key() == Qt.Key_Return or event.key() == Qt.Key_Enter:
                 # Obter o texto da última linha digitada (considerando que o cursor está no final)
                 # Para simulação básica, apenas obter a última linha
-                current_line = self.document().lastBlock().text()
+                current_line = self.document().lastBlock().text() # type: ignore
                 self.appendPlainText('') # Adiciona uma nova linha para o próximo prompt (simulação)
                 self.send_command(current_line)
                 # TODO: Limpar a linha digitada após enviar (requer controle do cursor)
@@ -117,7 +118,7 @@ class CustomTerminalWidget(QPlainTextEdit):
                  cursor.movePosition(cursor.End)
                  if cursor.positionInBlock() > 0:
                       cursor.deletePreviousChar()
-
+            
             else:
                 # Para outras teclas, adicione o texto ao final do documento (simulação de digitação)
                 # TODO: Lidar com outras teclas especiais (setas, delete, etc.) para simular um terminal real
