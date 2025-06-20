@@ -134,23 +134,12 @@ class CustomTerminalWidget(QPlainTextEdit):
         cursor.insertText(text)
         self.ensureCursorVisible()
 
-        # **Após adicionar a saída, tentar detectar o fim do comando (heurística)**
-        # Se a saída terminar com uma quebra de linha e o widget for somente leitura,
-        # pode ser o fim da resposta do comando.
-        # Adicionado um pequeno atraso para dar tempo da UI processar o redraw.
-        # Verifique se o widget está somente leitura e se o processo está rodando
+        # **Após adicionar a saída, agendar a reabilitação com um pequeno atraso**
+        # Isso reabilitará o widget após cada pedaço de saída, confiando no QTimer.singleShot(0, ...) em handle_output_displayed
+        # Remove a heurística baseada em newline
         if self.isReadOnly() and self.process and self.process.state() == QProcess.Running:
-            # Heurística: se a última parte da saída termina com newline, pode ser o fim do prompt
-            # Isso é muito básico e pode não funcionar para todos os shells/prompts
-            # Uma detecção de prompt mais robusta seria necessária para maior confiabilidade
-            # Para cmd.exe, o prompt geralmente termina com ">" seguido de espaço ou newline.
-            # Para bash, geralmente termina com "$" ou "#" seguido de espaço.
-            # Vamos tentar detectar um newline e depois talvez um prompt simples
-            last_text = self.document().toPlainText()[-len(text):] # Pega a última parte adicionada
-
-            if last_text.endswith('\n'):
-                 # Agenda a chamada de handle_output_displayed
-                 QTimer.singleShot(50, self.handle_output_displayed)
+            # Agenda a chamada de handle_output_displayed com um pequeno atraso
+            QTimer.singleShot(50, self.handle_output_displayed) # Ajuste o atraso se necessário
 
 
     # Método para enviar comandos para o shell (usando QProcess.write)
