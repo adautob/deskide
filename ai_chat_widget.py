@@ -198,15 +198,50 @@ class AIChatWidget(QWidget):
 
         user_text = self.user_input.text().strip()
         if user_text:
-            self.append_message("Você", user_text) # Adiciona ao histórico interno e atualiza display
+            # Adiciona a mensagem do usuário ao histórico interno e atualiza display
+            self.append_message("Você", user_text)
             self.user_input.clear()
             self.user_input.setDisabled(True)
             self.send_button.setDisabled(True)
             self.thinking_status.emit(True)
 
-            # **Criar Worker e Thread para chamar a API**
+            # **Obter contexto do arquivo ativo (já implementado)**
+            editor_content = None
+            if self.parent() and hasattr(self.parent(), 'get_active_editor_content'):
+                 editor_content = self.parent().get_active_editor_content()
+                 print(f"Conteúdo do editor ativo obtido (primeiros 50 chars): {editor_content[:50] if editor_content else 'None'}...")
+
+
+            # **Obter lista de arquivos selecionados no File Explorer**
+            selected_files = []
+            if self.parent() and hasattr(self.parent(), 'get_selected_explorer_files'):
+                 selected_files = self.parent().get_selected_explorer_files()
+                 print(f"Arquivos selecionados no explorer: {selected_files}") # Debug print
+
+
+            # **Formatar o prompt para incluir o contexto do arquivo ativo e arquivos selecionados**
+            prompt_with_context = user_text
+
+            if editor_content is not None:
+                 prompt_with_context += f"""{editor_content}""" # Inclui o conteúdo do editor em um bloco de código Markdown
+
+            if selected_files:
+                # Adiciona os nomes dos arquivos selecionados ao prompt
+                prompt_with_context += "\n\nConsidere também o conteúdo dos seguintes arquivos:"
+                for file_path in selected_files:
+                     prompt_with_context += f"\n- {file_path}"
+
+                # NOTA: A IA NÃO VAI LER AUTOMATICAMENTE O CONTEÚDO DESTES ARQUIVOS COM ESTA ABORDAGEM.
+                # Você precisaria usar a ferramenta de leitura de arquivos DENTRO do worker
+                # ou pedir à IA para "ler" esses arquivos usando natural_language_write_file
+                # com selectedContent vazio e o caminho do arquivo.
+                # A abordagem com natural_language_write_file pedindo para considerar é mais alinhada com as ferramentas disponíveis.
+
+
+            # **Criar Worker e Thread para chamar a API com o prompt e contexto**
+            # Passar o prompt_with_context para o GeminiWorker
             self.thread = QThread()
-            self.worker = GeminiWorker(self.chat_session, user_text)
+            self.worker = GeminiWorker(self.chat_session, prompt_with_context) # <-- Passa o novo prompt
             self.worker.moveToThread(self.thread)
 
             # Conectar sinais do worker e da thread
@@ -225,7 +260,7 @@ class AIChatWidget(QWidget):
 
             self.thread.start()
 
-            print(f"Mensagem do usuário enviada para processamento da API (via Worker).")
+            print(f"Mensagem do usuário enviada para processamento da API (via Worker), com/sem contexto.")
 
 
     @pyqtSlot(str)

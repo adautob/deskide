@@ -144,8 +144,20 @@ class IDE(QMainWindow):
         except Exception as e:
             print(f"Erro ao carregar ou aplicar style sheet: {e}")
 
+        self.file_explorer_view = None # Atribua a instância do seu QTreeView aqui
+
         self.show()
 
+    def get_selected_explorer_files(self):
+        selected_files = []
+        if self.file_explorer_view:
+            selection_model = self.file_explorer_view.selectionModel()
+            for index in selection_model.selectedIndexes():
+                file_path = self.file_system_model.filePath(index) # Assumindo que você usa QFileSystemModel
+                selected_files.append(file_path)
+        return selected_files    
+    
+    
     # Método auxiliar para obter o widget da aba ativa (pode ser um CodeEditor ou o AIChatWidget)
     def current_active_widget(self):
         return self.main_tab_widget.currentWidget()
