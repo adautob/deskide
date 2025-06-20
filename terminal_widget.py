@@ -186,18 +186,29 @@ class CustomTerminalWidget(QPlainTextEdit):
             cursor_position_in_document = cursor.position()
 
             if event.key() == Qt.Key_Return or event.key() == Qt.Key_Enter:
-                cursor.movePosition(cursor.End)
-                cursor.movePosition(cursor.StartOfLine, cursor.KeepAnchor)
-                current_line_with_prompt = cursor.selectedText()
+                # Capturar o texto APENAS na área digitável
+                cursor.movePosition(cursor.End, cursor.KeepAnchor) # Vai para o final, mantendo a seleção
+                cursor.movePosition(cursor.StartOfLine, cursor.KeepAnchor) # Seleciona a linha inteira
+                full_line_text = cursor.selectedText() # Pega a linha inteira como texto simples
 
                 # Calcular o texto digitado pelo usuário
-                cursor_pos_in_block = cursor_position_in_document - cursor.block().position()
-                command_start_pos_in_block = self.command_start_position - cursor.block().position()
-                # Garante que a posição de início não seja negativa
-                command_text = current_line_with_prompt[max(0, command_start_pos_in_block):]
+                # Pegar a parte da string que começa DEPOIS de command_start_position até a posição atual do cursor
+                # NOTA: self.command_start_position é a posição no documento
+                # cursor_position_in_document é a posição no documento antes do Enter
+                command_text = full_line_text[self.command_start_position:] # <--- CORREÇÃO: Pegar texto a partir da posição inicial do comando
+
+                # Remover quebras de linha e espaços em branco do início/fim
+                command_text = command_text.strip()
 
 
-                self.send_command(command_text.strip())
+                # Adicionar a linha digitada com prompt ao display antes de enviar
+                #appendPlainText já lida com a exibição e a heurística de fim de comando
+                self.appendPlainText(command_text + '\n') # Adicionar a linha digitada ao display
+
+                self.send_command(command_text) # <--- Enviar SOMENTE o comando real
+
+                # Resetar a posição de início do comando APÓS enviar (será ajustado por handle_output_displayed)
+                # self.command_start_position = self.textCursor().position() # Não resetar aqui, handle_output_displayed fará isso
 
 
             elif event.key() == Qt.Key_Backspace:
@@ -208,20 +219,49 @@ class CustomTerminalWidget(QPlainTextEdit):
                 if cursor_position_in_document > self.command_start_position:
                     super().keyPressEvent(event)
             elif event.key() == Qt.Key_Right:
-                 if cursor_position_in_document < self.textCursor().block().position() + self.textCursor().block().length() - 1:
-                      super().keyPressEvent(event)
+                 # Permite mover para a direita APENAS dentro da linha atual e antes do final do texto digitado
+                 # A posição do cursor no final da linha digitada é self.textCursor().block().position() + self.textCursor().block().length() - 1
+                 # O final do texto digitado é a posição atual do cursor antes do Enter.
+                 # Precisamos de um jeito de saber o final do texto digitado antes de adicionar o newline visual.
+                 # A forma mais simples é limitar o movimento do cursor pela posição original antes do Enter.
+                 # No entanto, como adicionamos o newline visual antes, o cálculo do final da linha muda.
+                 # Uma abordagem melhor é limitar o movimento para a direita pela posição atual do cursor ANTES do Enter.
+                 # Isso requer armazenar a posição inicial do cursor no keyPressEvent.
+
+                 # Vamos simplificar e apenas limitar o movimento para a direita para não ir além do final da linha atual.
+                 # O controle preciso de onde o usuário pode digitar (entre command_start_position e a posição atual)
+                 # já é feito implicitamente pelo controle de Backspace e Left.
+
+                 # Verifica se o cursor não está no final do documento ou no final da linha atual
+                 if cursor_position_in_document < self.textCursor().document().characterCount() and \
+                    cursor.block().position() + cursor.block().length() -1 > cursor_position_in_document: # Verifica se não é o último caractere da linha (quebra de linha)
+                    super().keyPressEvent(event)
+
 
             elif event.key() == Qt.Key_Up or event.key() == Qt.Key_Down:
+                 # Implementar histórico de comandos se necessário
                  pass
             elif event.key() == Qt.Key_Delete:
+                 # Permite deletar APENAS se estiver após command_start_position (não implementado explicitamente aqui)
                  pass
             elif event.key() == Qt.Key_Home:
                  cursor.movePosition(cursor.StartOfLine)
+                 # Mover para a direita APENAS até command_start_position
                  cursor.movePosition(cursor.Right, cursor.MoveAnchor, max(0, self.command_start_position - cursor.position())) # Garante que a posição de movimento não seja negativa
                  self.setTextCursor(cursor)
 
+
             elif event.key() == Qt.Key_End:
-                 self.moveCursor(self.textCursor().End)
+                 # Mover para o final da linha digitada (antes do newline visual)
+                 # A posição do final da linha digitada é a posição do cursor antes do Enter.
+                 # Como adicionamos o newline visual, o "fim" da linha é antes do newline.
+                 # Isso requer saber a posição original do cursor antes de adicionar o newline visual.
+                 # Uma alternativa é mover para o final da linha atual e então um caractere para a esquerda,
+                 # se o último caractere for um newline.
+
+                 # Vamos simplificar: move para o final da linha atual
+                 cursor.movePosition(cursor.EndOfLine)
+                 self.setTextCursor(cursor)
 
 
             else:
@@ -229,7 +269,6 @@ class CustomTerminalWidget(QPlainTextEdit):
 
         else:
             super().keyPressEvent(event)
-
 
     # Lidar com o fechamento do widget (terminar o processo do shell)
     def closeEvent(self, event):
