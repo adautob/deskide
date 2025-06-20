@@ -1,12 +1,13 @@
 import sys
 from PyQt5.QtWidgets import (QApplication, QMainWindow, QVBoxLayout, QWidget,
-                             QMenuBar, QMenu, QAction, QTreeView, QSplitter, QFileDialog)
+                             QMenuBar, QMenu, QAction, QTreeView, QSplitter, QFileDialog, QTabWidget) # Adicionado QTabWidget
 from PyQt5.QtGui import QIcon
 from PyQt5.QtCore import QDir, Qt, QFileInfo
 from PyQt5.QtWidgets import QFileSystemModel
 import os # Importação necessária para exclusão
+import re # Importação necessária para regex
 
-from editor import CodeEditor
+from editor import CodeEditor # Assumindo que editor.py foi atualizado com current_file_path na classe CodeEditor
 
 class IDE(QMainWindow):
     def __init__(self):
@@ -26,7 +27,7 @@ class IDE(QMainWindow):
         layout = QVBoxLayout()
         central_widget.setLayout(layout)
 
-        # Splitter para dividir o File Explorer e o Editor
+        # Splitter para dividir o File Explorer e o Editor (agora um TabWidget)
         splitter = QSplitter(Qt.Horizontal)
         layout.addWidget(splitter)
 
@@ -48,15 +49,20 @@ class IDE(QMainWindow):
 
         splitter.addWidget(self.file_tree_view)
 
-        # Editor de texto
-        self.editor = CodeEditor()
-        splitter.addWidget(self.editor)
+        # **Tab Widget para os editores**
+        self.tab_widget = QTabWidget() # Cria a instância e atribui a self.tab_widget
+        self.tab_widget.setTabsClosable(True) # Permite fechar abas
+        self.tab_widget.tabCloseRequested.connect(self.close_tab) # Conecta sinal para fechar abas
+        self.tab_widget.currentChanged.connect(self.update_title_on_tab_change) # Atualiza título ao mudar de aba
+
+        splitter.addWidget(self.tab_widget) # Adiciona o tab_widget ao splitter
+
 
         # Define a proporção inicial do splitter
         splitter.setSizes([200, 800]) # 200px para o file explorer, 800px para o editor
 
-        # Variáveis para rastrear o arquivo e a pasta atuais
-        self.current_file_path = None
+        # Variáveis para rastrear a pasta atual do explorer
+        # current_file_path agora é uma propriedade de cada CodeEditor
         self.current_folder_path = initial_folder # Armazena a pasta atualmente exibida no explorer
 
 
@@ -80,11 +86,9 @@ class IDE(QMainWindow):
         save_action.setShortcut('Ctrl+S')
         file_menu.addAction(save_action)
 
-        # **Adiciona a ação "Salvar como..."**
-        save_as_action = QAction('Salvar &como...', self) # Use & para atalho (Alt+C)
+        save_as_action = QAction('Salvar &como...', self)
         save_as_action.triggered.connect(self.save_file_as)
         file_menu.addAction(save_as_action)
-        save_action.triggered.connect(self.save_file) # Esta linha conecta a ação ao método
 
 
         # Ações do menu Projeto
@@ -95,76 +99,60 @@ class IDE(QMainWindow):
 
         self.show()
 
-    # Placeholder methods for file operations
+    # Método auxiliar para obter o editor da aba ativa
+    def current_editor(self):
+        return self.tab_widget.currentWidget()
+
+
     def new_file(self):
         print("Action \'Novo\' triggered")
-        self.editor.clear() # Limpa o conteúdo do editor
-        self.current_file_path = None # Reseta o caminho do arquivo atual
 
-        default_file_name_base = "sem titulo"
-        file_extension = ".txt"
-        file_number = 1
-        new_file_path = ""
-        file_exists = True
+        # Criar um novo editor e adicioná-lo como uma nova aba
+        editor = CodeEditor() # Cria uma nova instância de CodeEditor
+        # editor.current_file_path já é inicializado como None em CodeEditor.__init__
+        self.tab_widget.addTab(editor, "Sem Título") # Adiciona uma nova aba com o editor e título "Sem Título"
+        self.tab_widget.setCurrentWidget(editor) # Define a nova aba como ativa
 
-        # Usar a pasta atual do File Explorer como diretório para o novo arquivo
-        target_dir = self.current_folder_path if self.current_folder_path else QDir.currentPath()
+        # O arquivo físico sem título não é mais criado aqui.
+        # O salvamento inicial será tratado quando o usuário salvar pela primeira vez.
 
-
-        # Loop para encontrar um nome de arquivo disponível na pasta alvo
-        while file_exists:
-            if file_number == 1:
-                new_file_name = default_file_name_base + file_extension
-            else:
-                new_file_name = f"{default_file_name_base} {file_number}{file_extension}"
-
-            new_file_path = QDir(target_dir).filePath(new_file_name)
-            file_exists = QFileInfo(new_file_path).exists()
-            file_number += 1
-
-        try:
-            # Tenta criar e salvar um arquivo vazio com o nome encontrado
-            with open(new_file_path, 'w', encoding='utf-8') as f:
-                f.write("") # Salva um arquivo vazio
-            self.current_file_path = new_file_path # Atualiza o caminho do arquivo atual
-            self.setWindowTitle(f'Minha IDE Simples - {QFileInfo(self.current_file_path).fileName()}') # Atualiza o título da janela
-            print(f"Novo arquivo criado: {self.current_file_path}")
-
-            # Atualizar o File Explorer para mostrar o novo arquivo na pasta correta
-            index = self.file_system_model.index(self.current_file_path)
-            if index.isValid():
-                 self.file_tree_view.setCurrentIndex(index)
-                 # Opcional: Expandir o diretório pai para garantir que o arquivo esteja visível
-                 self.file_tree_view.expand(index.parent())
-
-
-        except Exception as e:
-            print(f"Erro ao criar novo arquivo: {e}")
-            # Em caso de erro, você pode querer voltar ao estado de "sem título"
-            self.current_file_path = None
-            self.setWindowTitle('Minha IDE Simples - Sem Título')
+        # Atualizar o título da janela para refletir a nova aba (inicialmente "Sem Título")
+        self.setWindowTitle('Minha IDE Simples - Sem Título')
 
 
     def open_file(self):
+        print("Action \'Abrir Arquivo\' triggered")
         options = QFileDialog.Options()
-        # Usar self.current_folder_path como o diretório inicial para o diálogo de abrir
         file_path, _ = QFileDialog.getOpenFileName(self, "Abrir Arquivo", self.current_folder_path, "Todos os Arquivos (*);;Arquivos de Texto (*.txt)", options=options)
         if file_path:
             try:
+                # Verificar se o arquivo já está aberto em uma aba
+                for i in range(self.tab_widget.count()):
+                     # Precisa verificar o current_file_path de cada widget (CodeEditor)
+                     if hasattr(self.tab_widget.widget(i), 'current_file_path') and self.tab_widget.widget(i).current_file_path == file_path:
+                         self.tab_widget.setCurrentIndex(i) # Ativa a aba existente
+                         print(f"Arquivo já aberto em aba: {file_path}")
+                         return # Sai do método se o arquivo já está aberto
+
+                # Se o arquivo não estiver aberto, criar uma nova aba
                 with open(file_path, 'r', encoding='utf-8') as f:
                     content = f.read()
-                    self.editor.setPlainText(content)
-                    self.current_file_path = file_path # Atualiza o caminho do arquivo atual
-                    self.setWindowTitle(f'Minha IDE Simples - {QFileInfo(self.current_file_path).fileName()}') # Atualiza o título ao abrir
-                    print(f"Arquivo aberto: {self.current_file_path}")
+                    editor = CodeEditor()
+                    editor.setPlainText(content)
+                    editor.current_file_path = file_path # Define o caminho do arquivo para este editor
+
+                    file_name = QFileInfo(file_path).fileName()
+                    self.tab_widget.addTab(editor, file_name) # Adiciona nova aba com o nome do arquivo
+                    self.tab_widget.setCurrentWidget(editor) # Define a nova aba como ativa
+
+                    self.setWindowTitle(f'Minha IDE Simples - {file_name}') # Atualiza o título da janela
+                    print(f"Arquivo aberto em nova aba: {file_path}")
 
                     # Opcional: Selecionar o arquivo no File Explorer
                     index = self.file_system_model.index(file_path)
                     if index.isValid():
                          self.file_tree_view.setCurrentIndex(index)
-                         # Opcional: Expandir o diretório pai no File Explorer
                          self.file_tree_view.expand(index.parent())
-                         # Atualiza a pasta atual do explorer para a pasta do arquivo aberto
                          self.current_folder_path = QFileInfo(file_path).dir().absolutePath()
 
 
@@ -173,84 +161,102 @@ class IDE(QMainWindow):
         else:
             print("Operação de abrir arquivo cancelada.")
 
-    def current_editor(self):
-        return self.tab_widget.currentWidget() # Retorna o editor da aba ativa  
-    
+
     def save_file(self):
         print("Método save_file chamado") # Debug print
 
         current_editor = self.current_editor() # Obtém o editor da aba ativa
-        if not current_editor: # Se não houver editor ativo
+        if not current_editor: # Se não houver editor ativo (nenhuma aba aberta)
             print("Nenhum editor ativo para salvar.")
             return # Sai do método
-        
+
         # Usar regex para verificar se o nome do arquivo atual corresponde ao padrão "sem titulo"
         is_untitled = False
-        original_file_path = current_editor.current_file_path # Armazena o caminho original antes de potencial mudança
+        # Não há arquivo original físico a ser excluído para um novo arquivo "sem título"
+        # A lógica de exclusão será para quando o usuário SALVAR COMO um arquivo "sem título"
+        # que foi criado anteriormente via "Novo" (se tivéssemos mantido a criação física imediata).
+        # Com a nova lógica de "Novo", o arquivo "sem título" só existe na memória até o primeiro salvamento.
+        original_file_path_if_physical = None # Usado apenas se tivéssemos criado o arquivo físico em new_file
 
         if current_editor.current_file_path:
             file_info = QFileInfo(current_editor.current_file_path)
             file_name = file_info.fileName()
-            import re
+            # import re # Já importado no topo
             pattern = r"^sem titulo(\s\d+)?\.txt$"
             if re.match(pattern, file_name):
                 is_untitled = True
+                # Se for um arquivo "sem título" que já foi salvo UMA VEZ, original_file_path_if_physical seria esse caminho.
+                # Mas com a nova lógica de "Novo", is_untitled será True E current_editor.current_file_path será None inicialmente.
+                # A lógica de "Salvar como" no else lidará com o primeiro salvamento.
+                # Se for um "sem título" que já foi salvo, a lógica do if (salvar existente) se aplicaria.
+
+
+        print(f"current_file_path do editor ativo: {current_editor.current_file_path}") # Debug print
+        print(f"is_untitled para editor ativo: {is_untitled}") # Debug print
+
 
         if current_editor.current_file_path and not is_untitled:
             # Salvar em arquivo existente (não "sem titulo")
             print("Tentando salvar em arquivo existente") # Debug print
             try:
-                content = current_editor.editor.toPlainText()
+                content = current_editor.toPlainText() # Usa o conteúdo do editor ativo
                 with open(current_editor.current_file_path, 'w', encoding='utf-8') as f:
                     f.write(content)
                 print(f"Arquivo salvo: {current_editor.current_file_path}")
+                # Opcional: Marcar a aba como não modificada (precisaria de uma flag de modificação no editor)
+                # self.tab_widget.setTabText(self.tab_widget.currentIndex(), QFileInfo(current_editor.current_file_path).fileName())
+
             except Exception as e:
                 print(f"Erro ao salvar o arquivo: {e}")
         else:
-            # "Salvar como" para arquivos sem título ou sem caminho definido
+            # "Salvar como" para arquivos sem título (current_file_path is None) ou "sem titulo" que já foram salvos
             print("Executando 'Salvar como'") # Debug print
             options = QFileDialog.Options()
 
-            # Sugerir o nome atual se for um arquivo "sem titulo"
+            # Sugerir o nome atual se for um arquivo "sem titulo" que já foi salvo
             initial_file_name = ""
-            if current_editor.current_file_path: # Verificar se self.current_file_path não é None antes de tentar obter o nome
+            if current_editor.current_file_path: # Verificar se current_editor.current_file_path não é None
                  file_info = QFileInfo(current_editor.current_file_path)
                  file_name = file_info.fileName()
                  # Re-verificar o padrão aqui para garantir que sugere apenas para "sem titulo"
-                 import re
+                 # import re # Já importado no topo
                  pattern = r"^sem titulo(\s\d+)?\.txt$"
                  if re.match(pattern, file_name):
                      initial_file_name = file_name
 
 
             # Usar self.current_folder_path como o diretório inicial para o diálogo de salvar
+            # O initialFilter (quinto argumento) é o nome sugerido
             file_path, _ = QFileDialog.getSaveFileName(self, "Salvar Arquivo", self.current_folder_path, "Todos os Arquivos (*);;Arquivos de Texto (*.txt)", initial_file_name, options=options)
 
             print(f"Caminho retornado por getSaveFileName: {file_path}") # Debug print
-            
+
+
             if file_path:
                 try:
-                    content = current_editor.editor.toPlainText()
+                    content = current_editor.toPlainText() # Usa o conteúdo do editor ativo
 
-                    # Implementar exclusão do arquivo antigo "sem titulo" se o nome mudou
-                    # Usar original_file_path para a verificação
-                    if is_untitled and original_file_path and file_path != original_file_path and os.path.exists(original_file_path):
-                        try:
-                            os.remove(original_file_path)
-                            print(f"Arquivo antigo excluído: {original_file_path}")
-                        except Exception as e:
-                            print(f"Erro ao excluir arquivo antigo: {e}")
+                    # **Exclusão do arquivo "sem título" físico (se ele tivesse sido criado)**
+                    # Com a nova lógica de "Novo", não há arquivo físico "sem título" para excluir
+                    # até o PRIMEIRO salvamento.
+                    # A lógica de exclusão aqui seria para o caso onde você SALVA UM ARQUIVO EXISTENTE
+                    # que TINHA um nome "sem título" com um NOVO nome.
+                    # A variável original_file_path_if_physical seria usada aqui.
+                    # Como não estamos mais criando o arquivo físico em new_file, essa lógica de exclusão complexa
+                    # para arquivos "sem título" criados via "Novo" se torna mais simples ou desnecessária aqui.
+                    # Se um arquivo foi aberto (e não era "sem título"), o if acima lida com ele.
+                    # Se é um novo arquivo ("sem título", current_file_path is None), não há arquivo físico a ser excluído antes do primeiro salvamento.
 
 
                     with open(file_path, 'w', encoding='utf-8') as f:
                         f.write(content)
 
-                    current_editor.current_file_path = file_path # Atualiza o caminho do arquivo atual
+                    current_editor.current_file_path = file_path # Atualiza o caminho NO EDITOR ATIVO
                     file_name_saved = QFileInfo(file_path).fileName()
                     self.setWindowTitle(f'Minha IDE Simples - {file_name_saved}') # Atualiza o título da janela principal
                     self.tab_widget.setTabText(self.tab_widget.currentIndex(), file_name_saved) # Atualiza o título da aba
                     print(f"Arquivo salvo: {file_path}")
-                    # Atualizar o File Explorer pode ser necessário para refletir a renomeação/novo arquivo
+                    # Atualizar o File Explorer pode ser necessário para refletir o novo arquivo
                     # Define a raiz do modelo e da view para a pasta onde o arquivo foi salvo
                     saved_file_dir = QFileInfo(file_path).dir().absolutePath()
                     self.file_system_model.setRootPath(saved_file_dir)
@@ -261,19 +267,18 @@ class IDE(QMainWindow):
                 except Exception as e:
                     print(f"Erro ao salvar o arquivo: {e}")
             else:
-                print("Operação de salvar cancelada.")
+                print("Operação de salvar cancelada.") # Debug print
 
-    
-    # **Novo método para "Salvar como"**
+
+    # Método para "Salvar como"
     def save_file_as(self):
         print("Action \'Salvar como...\' triggered")
-        
+
         current_editor = self.current_editor() # Obtém o editor da aba ativa
         if not current_editor: # Se não houver editor ativo
             print("Nenhum editor ativo para salvar como.")
-            return # Sai do método        
-        
-        
+            return # Sai do método
+
         options = QFileDialog.Options()
 
         # Sugerir o nome do arquivo atual (se houver) como nome inicial
@@ -283,22 +288,27 @@ class IDE(QMainWindow):
 
 
         # Abrir o diálogo de salvar sempre
+        # Usar self.current_folder_path como o diretório inicial para o diálogo de salvar
+        # O initialFilter (quinto argumento) é o nome sugerido
         file_path, _ = QFileDialog.getSaveFileName(self, "Salvar Arquivo como", self.current_folder_path, "Todos os Arquivos (*);;Arquivos de Texto (*.txt)", initial_file_name, options=options)
 
         if file_path:
             try:
-                content = current_editor.editor.toPlainText()
+                content = current_editor.toPlainText() # Usa o conteúdo do editor ativo
 
-                # Para "Salvar como", geralmente não excluímos o arquivo original
-                # a menos que seja um caso específico de renomear um "sem titulo"
-                # A lógica de exclusão para "sem titulo" ao salvar já está em save_file
-                # Se precisar de lógica de exclusão aqui, seria para casos diferentes
+                # **Exclusão do arquivo original para "Salvar como"**
+                # Se o arquivo original NÃO era um arquivo "sem título" e o caminho de salvamento é diferente,
+                # NÃO devemos excluir o arquivo original (comportamento padrão de "Salvar como").
+                # Se o arquivo original ERA um arquivo "sem título" e o caminho de salvamento é diferente,
+                # TAMBÉM NÃO há arquivo físico "sem título" para excluir (com a nova lógica de "Novo").
+                # A lógica de exclusão complexa que tínhamos era para o caso onde "Novo" criava um arquivo físico.
+                # Com a nova estrutura de abas, a lógica de exclusão para "sem título" é mais simples/desnecessária aqui.
 
 
                 with open(file_path, 'w', encoding='utf-8') as f:
                     f.write(content)
 
-                current_editor.current_file_path = file_path # Atualiza o caminho do arquivo atual para o novo
+                current_editor.current_file_path = file_path # Atualiza o caminho do arquivo atual para o novo NO EDITOR ATIVO
                 file_name_saved = QFileInfo(file_path).fileName()
                 self.setWindowTitle(f'Minha IDE Simples - {file_name_saved}') # Atualiza o título da janela principal
                 self.tab_widget.setTabText(self.tab_widget.currentIndex(), file_name_saved) # Atualiza o título da aba
@@ -312,21 +322,29 @@ class IDE(QMainWindow):
 
             except Exception as e:
                 print(f"Erro ao salvar arquivo como: {e}")
-        else:
-            print("Operação de salvar como cancelada.")
+            else:
+                print("Operação de salvar como cancelada.")
 
 
     def open_folder(self):
+        print("Action \'Abrir Pasta...\' triggered")
         folder_path = QFileDialog.getExistingDirectory(self, "Abrir Pasta", QDir.currentPath())
         if folder_path:
             self.file_system_model.setRootPath(folder_path)
             self.file_tree_view.setRootIndex(self.file_system_model.index(folder_path))
             self.current_folder_path = folder_path # Atualiza a pasta atual do explorer
-            # Opcional: Limpar o editor e resetar o arquivo atual ao abrir uma nova pasta
-            self.editor.clear()
-            self.current_file_path = None
-            self.setWindowTitle('Minha IDE Simples - Sem Título')
             print(f"Pasta aberta: {folder_path}")
+
+            # **Limpar todas as abas ao abrir uma nova pasta**
+            # Você pode querer perguntar ao usuário se deseja salvar antes de fechar abas modificadas
+            while self.tab_widget.count() > 0:
+                 # Implementar lógica de "Salvar antes de fechar" aqui, se necessário
+                 widget_to_close = self.tab_widget.widget(0)
+                 widget_to_close.deleteLater()
+                 self.tab_widget.removeTab(0)
+
+            self.setWindowTitle('Minha IDE Simples - Sem Título')
+            # current_file_path agora é por editor, então não precisa resetar self.current_file_path aqui.
 
 
     def open_file_from_explorer(self, index):
@@ -335,18 +353,109 @@ class IDE(QMainWindow):
 
         file_path = self.file_system_model.filePath(index)
         print(f"Abrir arquivo do explorer: {file_path}")
+
+        # **Usar a mesma lógica de open_file para abrir em abas**
         try:
+            # Verificar se o arquivo já está aberto em uma aba
+            for i in range(self.tab_widget.count()):
+                 if hasattr(self.tab_widget.widget(i), 'current_file_path') and self.tab_widget.widget(i).current_file_path == file_path:
+                     self.tab_widget.setCurrentIndex(i) # Ativa a aba existente
+                     print(f"Arquivo já aberto em aba: {file_path}")
+                     return # Sai do método se o arquivo já está aberto
+
+            # Se o arquivo não estiver aberto, criar uma nova aba
             with open(file_path, 'r', encoding='utf-8') as f:
                 content = f.read()
-                self.editor.setPlainText(content)
-                self.current_file_path = file_path # Atualiza o caminho do arquivo atual
-                self.setWindowTitle(f'Minha IDE Simples - {QFileInfo(self.current_file_path).fileName()}') # Atualiza o título ao abrir do explorer
-                # Atualiza a pasta atual do explorer para a pasta do arquivo aberto
-                self.current_folder_path = QFileInfo(file_path).dir().absolutePath()
+                editor = CodeEditor()
+                editor.setPlainText(content)
+                editor.current_file_path = file_path # Define o caminho do arquivo para este editor
+
+                file_name = QFileInfo(file_path).fileName()
+                self.tab_widget.addTab(editor, file_name) # Adiciona nova aba com o nome do arquivo
+                self.tab_widget.setCurrentWidget(editor) # Define a nova aba como ativa
+
+                self.setWindowTitle(f'Minha IDE Simples - {file_name}') # Atualiza o título da janela
+                print(f"Arquivo aberto em nova aba: {file_path}")
+
+                # Opcional: Selecionar o arquivo no File Explorer (já deve estar selecionado se clicou nele)
+                index_in_explorer = self.file_system_model.index(file_path)
+                if index_in_explorer.isValid():
+                     self.file_tree_view.setCurrentIndex(index_in_explorer)
+                     self.file_tree_view.expand(index_in_explorer.parent())
+                     self.current_folder_path = QFileInfo(file_path).dir().absolutePath()
+
 
         except Exception as e:
-            print(f"Erro ao abrir o arquivo: {e}")
+            print(f"Erro ao abrir o arquivo do explorer: {e}")
 
+
+    # Slot para fechar abas
+    def close_tab(self, index):
+        print(f"Fechando aba no índice: {index}")
+        widget_to_close = self.tab_widget.widget(index)
+        if widget_to_close:
+            # Você pode adicionar lógica aqui para perguntar ao usuário se deseja salvar
+            # antes de fechar, se o conteúdo do editor foi modificado.
+            # widget_to_close.document().isModified() # Pode usar isModified() se implementar a flag
+
+            widget_to_close.deleteLater() # Deleta o widget
+            self.tab_widget.removeTab(index) # Remove a aba
+
+            # Atualizar o título da janela se a aba fechada for a ativa anterior
+            if self.tab_widget.count() == 0:
+                 self.setWindowTitle('Minha IDE Simples - Sem Título')
+                 # Não há abas, desmarcar seleção no File Explorer
+                 self.file_tree_view.clearSelection()
+                 # current_file_path é por editor, então não precisa resetar self.current_file_path
+
+            else:
+                 # Atualizar título para a nova aba ativa
+                 self.update_title_on_tab_change(self.tab_widget.currentIndex())
+        else:
+            print(f"Erro: Widget na aba {index} não encontrado.")
+
+
+    # Slot para atualizar o título da janela ao mudar de aba
+    def update_title_on_tab_change(self, index):
+        print(f"Mudança de aba para o índice: {index}")
+        if index != -1: # Verifica se há alguma aba ativa
+             current_editor = self.tab_widget.widget(index)
+             if current_editor and hasattr(current_editor, 'current_file_path'):
+                 if current_editor.current_file_path:
+                     file_name = QFileInfo(current_editor.current_file_path).fileName()
+                     self.setWindowTitle(f'Minha IDE Simples - {file_name}')
+                     # Opcional: Selecionar o arquivo da aba ativa no File Explorer
+                     index_in_explorer = self.file_system_model.index(current_editor.current_file_path)
+                     if index_in_explorer.isValid():
+                          self.file_tree_view.setCurrentIndex(index_in_explorer)
+                          self.file_tree_view.expand(index_in_explorer.parent())
+                          self.current_folder_path = QFileInfo(current_editor.current_file_path).dir().absolutePath()
+
+                     else: # Arquivo existe mas não está no modelo atual (talvez em outra pasta aberta antes)
+                          # Tentar atualizar a raiz do explorer para a pasta do arquivo? Pode ser intrusivo.
+                          # Ou apenas desmarcar a seleção no explorer atual.
+                          self.file_tree_view.clearSelection()
+                          # Manter self.current_folder_path como estava antes da mudança de aba?
+                          # Ou atualizar para a pasta do arquivo da aba?
+                          if current_editor.current_file_path:
+                             self.current_folder_path = QFileInfo(current_editor.current_file_path).dir().absolutePath()
+
+
+                 else: # Aba sem título (novo arquivo)
+                     self.setWindowTitle('Minha IDE Simples - Sem Título')
+                     # Desmarcar seleção no File Explorer se for uma aba sem título
+                     self.file_tree_view.clearSelection()
+                     # Manter a pasta atual do explorer como estava.
+
+             else: # Caso inesperado, widget na aba não é um CodeEditor ou não tem current_file_path
+                 self.setWindowTitle('Minha IDE Simples - Erro na Aba')
+                 self.file_tree_view.clearSelection()
+
+        else: # Nenhuma aba ativa
+             self.setWindowTitle('Minha IDE Simples - Sem Título')
+             # Não há abas, desmarcar seleção no File Explorer
+             self.file_tree_view.clearSelection()
+             # current_file_path é por editor, então não precisa resetar self.current_file_path aqui.
 
 
 if __name__ == '__main__':
