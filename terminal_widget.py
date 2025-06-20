@@ -182,6 +182,11 @@ class CustomTerminalWidget(QPlainTextEdit):
                 cursor.movePosition(cursor.StartOfLine, cursor.KeepAnchor) # Seleciona a linha inteira
                 full_line_text = cursor.selectedText() # Pega a linha inteira como texto simples
 
+                # **Debug prints para inspecionar antes de extrair command_text**
+                print(f"keyPressEvent (Enter): full_line_text = {repr(full_line_text)}")
+                print(f"keyPressEvent (Enter): self.command_start_position = {self.command_start_position}")
+                print(f"keyPressEvent (Enter): cursor_position_in_document (before Enter) = {cursor_position_in_document}")                
+                
                 # Calcular o texto digitado pelo usuário
                 # Pegar a parte da string que começa DEPOIS de command_start_position até a posição atual do cursor
                 # NOTA: self.command_start_position é a posição no documento
