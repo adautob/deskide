@@ -17,7 +17,7 @@ import google.generativeai.protos as genai_protos
 
 
 # Classe Worker para chamar a API do Gemini em uma thread separada
-class GeminiWorker(QObject):
+#class GeminiWorker(QObject):
     # ... (código da classe GeminiWorker) ...
 
 
