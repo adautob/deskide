@@ -1,61 +1,25 @@
 # No arquivo ai_chat_widget.py
 
 import sys
-import re # Importar o módulo re
-import html # Importar o módulo html para escapar caracteres especiais
-from PyQt5.QtWidgets import QWidget, QVBoxLayout, QTextEdit, QLineEdit, QPushButton, QHBoxLayout, QApplication
+import re
+import html
+import json
+from PyQt5.QtWidgets import QWidget, QVBoxLayout, QLineEdit, QPushButton, QHBoxLayout, QApplication
 from PyQt5.QtCore import Qt, QTimer, pyqtSignal as Signal, QThread, QObject, pyqtSlot
 
-# **Importar a biblioteca do Gemini**
+# **Importar QWebEngineView**
+from PyQt5.QtWebEngineWidgets import QWebEngineView
+# **Importar a biblioteca markdown**
+import markdown
+
+# Importar a biblioteca do Gemini e protos
 import google.generativeai as genai
-# Importar o módulo genai.protos para acessar a estrutura do histórico
 import google.generativeai.protos as genai_protos
 
 
 # Classe Worker para chamar a API do Gemini em uma thread separada
 class GeminiWorker(QObject):
-    # Sinais para comunicar com a thread principal
-    finished = Signal() # Sinal emitido quando a tarefa termina
-    response_ready = Signal(str) # Sinal emitido quando a resposta da IA está pronta
-    error = Signal(str) # Sinal emitido em caso de erro
-
-    def __init__(self, chat_session, user_message):
-        super().__init__()
-        self.chat_session = chat_session
-        self.user_message = user_message
-
-    @pyqtSlot() # Decorador para indicar que este método é um slot (será chamado na thread)
-    def run(self):
-        """Executa a chamada para a API do Gemini."""
-        try:
-            print(f"Worker: Enviando mensagem para a API: {self.user_message}") # Debug print
-            # Enviar a mensagem do usuário para a sessão de chat do Gemini
-            response = self.chat_session.send_message(self.user_message)
-            print(f"Worker: Resposta da API recebida: {response}") # Debug print
-
-            # Extrair o texto da resposta
-            ai_text = ""
-            try:
-                # Tenta obter o texto diretamente. Lida com ContentEmpty ou outros erros.
-                if response and hasattr(response, 'text'):
-                    ai_text = response.text
-                else:
-                     ai_text = f"Resposta da IA não contém texto (ou está vazia): {response}"
-
-            except Exception as e:
-                ai_text = f"Erro ao extrair texto da resposta da IA: {e}\nResposta completa: {response}"
-
-
-            print(f"Worker: Texto da IA extraído: {ai_text}") # Debug print
-            self.response_ready.emit(ai_text) # Emite o sinal com a resposta
-
-        except Exception as e:
-            print(f"Worker: Erro na chamada da API: {e}") # Debug print
-            self.error.emit(f"Erro na comunicação com a IA: {e}") # Emite o sinal de erro
-
-        finally:
-            print("Worker: Tarefa finalizada.") # Debug print
-            self.finished.emit() # Emite o sinal de finalização
+    # ... (código da classe GeminiWorker) ...
 
 
 class AIChatWidget(QWidget):
@@ -64,33 +28,33 @@ class AIChatWidget(QWidget):
     def __init__(self, parent=None, api_key=None):
         super().__init__(parent)
 
-        # **Configurar a API do Gemini (precisa da chave)**
+        # **Configurar a API do Gemini**
         self.api_key = api_key
         self.model = None
         self.chat_session = None # A sessão de chat do Gemini
 
+        # **Histórico da conversa em texto simples**
+        self.conversation_history = [] # Lista de dicionários: [{'sender': 'IA', 'text': 'Olá! ...'}, ...]
+
+
         if self.api_key:
             try:
                 genai.configure(api_key=self.api_key)
-                # Inicializar o modelo de conversação (chat)
-                self.model = genai.GenerativeModel('gemini-1.5-flash-latest') # Use o modelo apropriado
-                self.chat_session = self.model.start_chat(history=[]) # Iniciar uma nova sessão de chat com histórico vazio
-                print("API do Gemini configurada e sessão de chat iniciada.") # Debug print
+                self.model = genai.GenerativeModel('gemini-1.5-flash-latest')
+                self.chat_session = self.model.start_chat(history=[])
+                print("API do Gemini configurada e sessão de chat iniciada.")
             except Exception as e:
                 print(f"Erro ao configurar a API do Gemini ou iniciar sessão de chat: {e}")
-                self.append_message("Sistema", f"Erro ao configurar a API do Gemini: {e}. O chat de IA não estará funcional.")
-                self.api_key = None # Invalidar a chave se a configuração falhar
+                self.append_message_internal("Sistema", f"Erro ao configurar a API do Gemini: {e}. O chat de IA não estará funcional.")
+                self.api_key = None
         else:
             print("Chave de API do Gemini não fornecida. O chat de IA não estará funcional.")
-            self.append_message("Sistema", "Chave de API do Gemini não fornecida. O chat de IA não estará funcional.")
+            self.append_message_internal("Sistema", "Chave de API do Gemini não fornecida. O chat de IA não estará funcional.")
 
 
-        # **Compilar a expressão regular para blocos de código e armazenar como variável de instância**
-        # Usado no re.split para manter os delimitadores
-        self.code_delimiter_pattern = re.compile(r'((?:\w+)?\n.*?)', re.DOTALL)
-
-        # Usado para extrair o conteúdo DEPOIS de splitar
-        self.code_content_pattern = re.compile(r'(?:\w+)?\n(.*?)\n', re.DOTALL)
+        # A expressão regular para blocos de código não é mais necessária para a formatação aqui
+        # self.code_delimiter_pattern = re.compile(r'(?:\w+)?\n.*?', re.DOTALL)
+        # self.code_content_pattern = re.compile(r'(?:\w+)?\n(.*?)\n', re.DOTALL)
 
 
         self.initUI()
@@ -101,8 +65,9 @@ class AIChatWidget(QWidget):
         main_layout = QVBoxLayout()
         self.setLayout(main_layout)
 
-        self.history_display = QTextEdit()
-        self.history_display.setReadOnly(True)
+        # **Substituir QTextEdit por QWebEngineView**
+        self.history_display = QWebEngineView()
+        # self.history_display.setReadOnly(True) # QWebEngineView não tem setReadOnly direto assim
         main_layout.addWidget(self.history_display)
 
         input_layout = QHBoxLayout()
@@ -117,60 +82,69 @@ class AIChatWidget(QWidget):
         self.send_button.clicked.connect(self.send_message)
         input_layout.addWidget(self.send_button)
 
-        self.append_message("IA", "Olá! Como posso ajudar com seu código hoje?")
+        # Adicionar uma mensagem inicial no histórico (usando o novo método interno)
+        self.append_message_internal("IA", "Olá! Como posso ajudar com seu código hoje?")
 
-    # **Método append_message modificado para formatar blocos de código**
-    # No arquivo ai_chat_widget.py, dentro da classe AIChatWidget:
 
-    # Método append_message modificado para formatar blocos de código
+    # Método interno para adicionar mensagens ao histórico em texto simples e atualizar o display
+    def append_message_internal(self, sender, text):
+        # Adiciona a mensagem ao histórico em texto simples
+        self.conversation_history.append({'sender': sender, 'text': text})
+        print(f"Mensagem adicionada ao histórico interno: {sender}: {text[:50]}...") # Debug print
+
+        # **Atualizar o display (QWebEngineView) com o histórico completo**
+        self.update_display()
+
+
+    # Método para reconstruir e exibir o histórico no QWebEngineView
+    def update_display(self):
+        html_content = """
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <style>
+                body { font-family: sans-serif; margin: 10px; }
+                .message { margin-bottom: 10px; padding: 8px; border-radius: 5px; }
+                .user-message { background-color: #e0f2f7; text-align: right; }
+                .ai-message { background-color: #f1f8e9; text-align: left; }
+                .sender { font-weight: bold; margin-bottom: 5px; }
+                pre { background-color: #f4f4f4; padding: 10px; border-radius: 5px; overflow-x: auto; font-family: "Courier New", Consolas, monospace; }
+                code { font-family: "Courier New", Consolas, monospace; }
+            </style>
+        </head>
+        <body>
+        """
+
+        for message in self.conversation_history:
+            sender = message['sender']
+            text = message['text']
+
+            # Convert Markdown text to HTML
+            # Use fenced code blocks extension for markdown (like python\ncode)
+            html_text = markdown.markdown(text, extensions=['fenced_code'])
+
+            # Apply basic styling based on sender
+            message_class = "user-message" if sender == "Você" else "ai-message"
+
+            html_content += f"""
+            <div class="message {message_class}">
+                <div class="sender">{sender}:</div>
+                <div class="text">{html_text}</div>
+            </div>
+            """
+
+        html_content += "</body></html>"
+
+        print("Atualizando QWebEngineView com HTML gerado.") # Debug print
+        self.history_display.setHtml(html_content)
+
+
+    # O método append_message original não é mais usado para adicionar ao display
+    # Ele agora adiciona ao histórico interno e chama update_display
     def append_message(self, sender, message):
-        formatted_message = f"<b>{sender}:</b> "
+        # Este método agora apenas chama o método interno
+        self.append_message_internal(sender, message)
 
-        # Processar a mensagem para formatar blocos de código
-        # Dividir a mensagem pelos delimitadores de bloco de código
-        parts_with_delimiters = re.split(self.code_delimiter_pattern, message)
-
-
-        content_html = ""
-
-        for part in parts_with_delimiters:
-            if not part: # Ignorar partes vazias resultantes do split
-                 continue
-
-            # Verificar se a parte é um bloco de código usando a regex de delimitador
-            # Precisa de um re.match para verificar se a parte INTEIRA é um delimitador
-            if self.code_delimiter_pattern.fullmatch(part):
-                # Extrair APENAS o conteúdo do código (remover as marcações)
-                code_content_match = self.code_content_pattern.search(part)
-                if code_content_match:
-                    code_content = code_content_match.group(1)
-                    # Formatar o bloco de código
-                    import html # A importação de html deve estar no topo do arquivo
-                    escaped_code_content = html.escape(code_content)
-                    formatted_code = f"<pre style='font-family: \"Courier New\", Consolas, monospace; background-color: #f4f4f4; padding: 5px;'>{escaped_code_content}</pre>"
-                    content_html += formatted_code
-
-                else:
-                    # Caso inesperado: a parte parecia um delimitador mas a regex de conteúdo não encontrou o conteúdo
-                    content_html += part # Adicionar como texto normal, preservando \n
-
-
-            else: # Se a parte não é um bloco de código (texto normal)
-                # Adicionar texto normal (substituir quebras de linha por <br>)
-                content_html += part.replace('\n', '<br>')
-
-
-        # Debug print para inspecionar o HTML gerado (mantenha para verificar a correção)
-        print(f"HTML gerado para mensagem de {sender}: {formatted_message + content_html + '<br>'}")
-
-
-        # Adicionar a mensagem formatada ao histórico
-        self.history_display.append(formatted_message + content_html + "<br>")
-        self.history_display.ensureCursorVisible()
-
-
-
-    # No arquivo ai_chat_widget.py, dentro da classe AIChatWidget:
 
     def send_message(self):
         if not self.chat_session:
@@ -179,7 +153,7 @@ class AIChatWidget(QWidget):
 
         user_text = self.user_input.text().strip()
         if user_text:
-            self.append_message("Você", user_text)
+            self.append_message("Você", user_text) # Adiciona ao histórico interno e atualiza display
             self.user_input.clear()
             self.user_input.setDisabled(True)
             self.send_button.setDisabled(True)
@@ -208,22 +182,19 @@ class AIChatWidget(QWidget):
 
             print(f"Mensagem do usuário enviada para processamento da API (via Worker).")
 
-    # ... restante dos métodos ...
-
-
 
     @pyqtSlot(str)
     def receive_ai_response(self, ai_text):
         print(f"Recebendo resposta da IA: {ai_text}")
-        # append_message agora lida com a formatação
-        self.append_message("IA", ai_text)
+        # Adiciona a resposta ao histórico interno e atualiza o display
+        self.append_message_internal("IA", ai_text)
         # Reabilitação da UI agora é agendada em handle_api_task_finished
 
 
     @pyqtSlot(str)
     def handle_ai_error(self, error_message):
         print(f"Erro da API da IA: {error_message}")
-        self.append_message("Sistema", f"Erro na comunicação com a IA: {error_message}")
+        self.append_message_internal("Sistema", f"Erro na comunicação com a IA: {error_message}")
         # Reabilitação da UI agora é agendada em handle_api_task_finished
 
 
@@ -232,7 +203,6 @@ class AIChatWidget(QWidget):
         print("--> Início handle_api_task_finished")
         try:
             print("Agendando reabilitação da UI com QTimer.singleShot(0).")
-            # **Agendar a reabilitação da UI na próxima iteração do loop de eventos**
             QTimer.singleShot(0, self._re_enable_ui)
 
         except Exception as e:
@@ -240,19 +210,19 @@ class AIChatWidget(QWidget):
         print("<-- Fim handle_api_task_finished")
 
 
-    @pyqtSlot() # Novo slot para a reabilitação da UI agendada
+    @pyqtSlot()
     def _re_enable_ui(self):
-        print("--> Início _re_enable_ui")
-        try:
-            print("Executando reabilitação da UI: user_input e send_button.")
-            self.user_input.setDisabled(False)
-            self.send_button.setDisabled(False)
-            self.user_input.setFocus()
-            self.thinking_status.emit(False)
-            print("UI reabilitada com sucesso em _re_enable_ui.")
-        except Exception as e:
-            print(f"Erro durante execução da reabilitação da UI em _re_enable_ui: {e}")
-        print("<-- Fim _re_enable_ui")
+         print("--> Início _re_enable_ui")
+         try:
+             print("Executando reabilitação da UI: user_input e send_button.")
+             self.user_input.setDisabled(False)
+             self.send_button.setDisabled(False)
+             self.user_input.setFocus()
+             self.thinking_status.emit(False)
+             print("UI reabilitada com sucesso em _re_enable_ui.")
+         except Exception as e:
+             print(f"Erro durante execução da reabilitação da UI em _re_enable_ui: {e}")
+         print("<-- Fim _re_enable_ui")
 
 
     @pyqtSlot(bool)
@@ -267,20 +237,22 @@ class AIChatWidget(QWidget):
             self.user_input.setDisabled(False)
             # self.user_input.setFocus() # Não definir foco aqui, pois pode interferir com outras ações
 
-    # Exemplo básico de uso (para teste individual do widget)
-    if __name__ == '__main__':
-        app = QApplication(sys.argv)
-        # Substitua "SUA_CHAVE_DE_API" pela sua chave real para teste individual
-        # Gerencie sua chave de API de forma segura (variáveis de ambiente, arquivo de configuração)
-        # NUNCA inclua sua chave diretamente no código fonte compartilhado.
-        # Exemplo: ler de uma variável de ambiente
-        # import os
-        # api_key = os.environ.get("GEMINI_API_KEY")
-        api_key = "AIzaSyBZl62T-QP2U8aVtvcWY5k8Y2Dv4veeZeQ" # Substitua ou use o método seguro
 
-        chat_widget = AIChatWidget(api_key=api_key)
-        chat_widget.setWindowTitle("Chat de IA Básico com Gemini")
-        chat_widget.resize(400, 600)
-        chat_widget.show()
-        sys.exit(app.exec_())
+# Exemplo básico de uso (para teste individual do widget)
+if __name__ == '__main__':
+    app = QApplication(sys.argv)
+    # Substitua "SUA_CHAVE_DE_API" pela sua chave real para teste individual
+    # Gerencie sua chave de API de forma segura (variáveis de ambiente, arquivo de configuração)
+    # NUNCA inclua sua chave diretamente no código fonte compartilhado.
+    # Exemplo: ler de uma variável de ambiente
+    # import os
+    # api_key = os.environ.get("GEMINI_API_KEY")
+    api_key = "AIzaSyBZl62T-QP2U8aVtvcWY5k8Y2Dv4veeZeQ" # Substitua ou use o método seguro
+
+    chat_widget = AIChatWidget(api_key=api_key)
+    chat_widget.setWindowTitle("Chat de IA Básico com Gemini")
+    chat_widget.resize(400, 600)
+    chat_widget.show()
+    sys.exit(app.exec_())
+
 
