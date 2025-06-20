@@ -9,7 +9,7 @@ import threading
 import os
 
 class CustomTerminalWidget(QPlainTextEdit):
-    # Sinal para emitir a saída do terminal de forma segura para a UI thread
+    # Não precisamos mais do sinal output_received com QProcess, mas mantido se a abordagem subprocess for usada
     output_received = Signal(str)
 
 
@@ -21,127 +21,143 @@ class CustomTerminalWidget(QPlainTextEdit):
             if sys.platform.startswith('linux') or sys.platform == 'darwin':
                 shell_program = "bash"
             elif sys.platform == 'win32':
-                # No Windows, tentar cmd.exe ou powershell.exe
                 shell_program = "cmd.exe"
-                # shell_program = "powershell.exe" # Opcional: tentar Powershell
+                # shell_program = "powershell.exe"
             else:
-                shell_program = "sh" # Fallback para sh
+                shell_program = "sh"
 
         self.shell_program = shell_program
-        self.process = None
-        self.command_start_position = 0 # Rastreia o início da linha de comando
+        self.process = QProcess(self) # Usar QProcess
+        self.command_start_position = 0
 
-        self.setReadOnly(True) # Inicialmente somente para exibição
+        self.setReadOnly(True)
         self.appendPlainText(f"Iniciando terminal com: {self.shell_program}...\n")
 
-        # Conecta o sinal output_received ao slot para exibir a saída
-        self.output_received.connect(self.appendPlainText)
+        # **Conectar sinais do QProcess**
+        self.process.readyReadStandardOutput.connect(self.read_standard_output)
+        self.process.readyReadStandardError.connect(self.read_standard_error)
+        self.process.finished.connect(self.process_finished)
 
         self.start_shell()
 
 
     def start_shell(self):
         try:
-            # Inicia o subprocesso do shell
-            # stdout e stderr são redirecionados para PIPE
-            # stdin também é redirecionado para PIPE para que possamos enviar comandos
-            # cwd (current working directory) pode ser definido se necessário para iniciar na pasta do projeto
-            # cwd=os.getcwd() # Exemplo: iniciar na pasta atual do script
+            # Inicia o processo do shell usando QProcess
+            if sys.platform.startswith('win32'):
+                 self.process.start(self.shell_program, ["/K"]) # Usar /K para manter o cmd aberto
+            else:
+                 self.process.start(self.shell_program)
 
-            self.process = subprocess.Popen(
-                self.shell_program,
-                stdin=subprocess.PIPE,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                text=True, # Decodifica stdout/stderr como texto
-                bufsize=1, # Buffer de linha para stdout/stderr
-                universal_newlines=True # Sinônimo para text em versões mais recentes
-                # shell=True # Use shell=True se precisar que o comando seja executado através do shell do sistema (pode ser necessário para alguns comandos)
-            )
-
-            # Lê a saída do stdout e stderr em threads separadas para não bloquear a UI
-            # daemon=True para encerrar as threads automaticamente com o programa
-            import threading
-            threading.Thread(target=self.read_output, args=(self.process.stdout, False), daemon=True).start()
-            threading.Thread(target=self.read_output, args=(self.process.stderr, True), daemon=True).start()
 
             # **Após iniciar o shell, tornar o widget editável e definir a posição inicial da linha de comando**
-            # Usar singleShot para garantir que isso rode na UI thread após a inicialização da janela
-            QTimer.singleShot(100, self.after_shell_start) # Pequeno atraso para a UI thread estar pronta
+            QTimer.singleShot(200, self.after_shell_start) # Ajuste no tempo se necessário
 
 
         except FileNotFoundError:
             self.appendPlainText(f"Erro: Programa do shell '{self.shell_program}' não encontrado.\n")
-            self.setReadOnly(False) # Permitir edição para ver a mensagem de erro e tentar digitar
+            self.setReadOnly(False)
         except Exception as e:
-            self.appendPlainText(f"Erro ao iniciar o shell: {e}\n")
-            self.setReadOnly(False) # Permitir edição para ver a mensagem de erro e tentar digitar
+            self.appendPlainText(f"Erro ao iniciar o shell: {e}")
+            self.setReadOnly(False)
 
 
     def after_shell_start(self):
-         print("after_shell_start chamado.") # Debug print
+         print("after_shell_start chamado (QProcess).") # Debug print
          self.setReadOnly(False)
          print("Widget definido como editável.") # Debug print
-         self.moveCursor(self.textCursor().End) # Move o cursor para o final
-         self.command_start_position = self.textCursor().position() # Salva a posição do cursor
-         # Opcional: Adicionar um prompt inicial se o shell não enviar um imediatamente
-         # self.insertPlainText("$ ")
-         # self.command_start_position = self.textCursor().position() # Atualiza após adicionar o prompt
+         self.moveCursor(self.textCursor().End)
+         self.command_start_position = self.textCursor().position()
+         # Opcional: Enviar um comando inicial como 'cd' para mostrar o diretório atual
+         # self.send_command("cd")
 
 
-    def read_output(self, pipe, is_stderr):
-        try:
-            print(f"Thread de leitura ({'stderr' if is_stderr else 'stdout'}) iniciada.") # Debug print
-            for line in iter(pipe.readline, ''):
-                print(f"Thread de leitura ({'stderr' if is_stderr else 'stdout'}) recebeu linha: {line.strip()}") # Debug print
-                self.output_received.emit(line)
+    # **Slots para ler a saída do QProcess**
+    def read_standard_output(self):
+        data = self.process.readAllStandardOutput()
+        text = bytes(data).decode(QTextCodec.codecForLocale().name()) # Não usar strip() aqui para manter quebras de linha
+        if text:
+            print(f"Saída Standard recebida (QProcess): {repr(text)}") # Debug print com repr()
+            self.appendPlainText(text) # appendPlainText agora lida com a detecção de fim de comando
 
-            print(f"Thread de leitura ({'stderr' if is_stderr else 'stdout'}) finalizada.") # Debug print
-            self.output_received.emit(f"\nProcesso do shell ({self.shell_program}) encerrado.\n")
+    def read_standard_error(self):
+        data = self.process.readAllStandardError()
+        text = bytes(data).decode(QTextCodec.codecForLocale().name()) # Não usar strip() aqui
+        if text:
+            print(f"Saída de Erro Standard recebida (QProcess): {repr(text)}") # Debug print com repr()
+            self.appendPlainText(text) # appendPlainText agora lida com a detecção de fim de comando
 
 
-        except Exception as e:
-            print(f"Thread de leitura ({'stderr' if is_stderr else 'stdout'}) encontrou erro: {e}") # Debug print
-            self.output_received.emit(f"\nErro na leitura do pipe ({'stderr' if is_stderr else 'stdout'}): {e}\n")
+    def process_finished(self, exit_code, exit_status):
+        print(f"Processo do shell ({self.shell_program}) encerrado com código {exit_code} e status {exit_status}.") # Debug print
+        self.appendPlainText(f"\nProcesso do shell ({self.shell_program}) encerrado.\n")
+        self.setReadOnly(True) # Tornar somente leitura quando o processo terminar
 
 
-    # Slot conectado ao sinal output_received
+    def handle_output_displayed(self):
+         print("handle_output_displayed chamado (QProcess).") # Debug print
+         self.setReadOnly(False)
+         print("Widget definido como editável.") # Debug print
+         self.moveCursor(self.textCursor().End)
+         self.command_start_position = self.textCursor().position()
+
+
+    # Slot conectado ao sinal output_received (este slot agora é o principal para adicionar texto)
+    # Renomeei de appendPlainText para _append_text_and_scroll para clareza
     def appendPlainText(self, text):
         # Adiciona texto ao widget e rola para o final
         cursor = self.textCursor()
         cursor.movePosition(cursor.End)
         cursor.insertText(text)
-        self.ensureCursorVisible() # Garante que o cursor (e o texto adicionado) esteja visível
+        self.ensureCursorVisible()
+
+        # **Após adicionar a saída, tentar detectar o fim do comando (heurística)**
+        # Se a saída terminar com uma quebra de linha e o widget for somente leitura,
+        # pode ser o fim da resposta do comando.
+        # Adicionado um pequeno atraso para dar tempo da UI processar o redraw.
+        # Verifique se o widget está somente leitura e se o processo está rodando
+        if self.isReadOnly() and self.process and self.process.state() == QProcess.Running:
+            # Heurística: se a última parte da saída termina com newline, pode ser o fim do prompt
+            # Isso é muito básico e pode não funcionar para todos os shells/prompts
+            # Uma detecção de prompt mais robusta seria necessária para maior confiabilidade
+            # Para cmd.exe, o prompt geralmente termina com ">" seguido de espaço ou newline.
+            # Para bash, geralmente termina com "$" ou "#" seguido de espaço.
+            # Vamos tentar detectar um newline e depois talvez um prompt simples
+            last_text = self.document().toPlainText()[-len(text):] # Pega a última parte adicionada
+
+            if last_text.endswith('\n'):
+                 # Agenda a chamada de handle_output_displayed
+                 QTimer.singleShot(50, self.handle_output_displayed)
 
 
-    # Método para enviar comandos para o shell
+    # Método para enviar comandos para o shell (usando QProcess.write)
     def send_command(self, command):
-        if self.process and self.process.stdin:
+        if self.process and self.process.state() == QProcess.Running:
             try:
-                print(f"Enviando comando: {command}") # Debug print
+                print(f"Enviando comando para QProcess: {command}") # Debug print
                 # Adiciona a linha digitada e uma nova linha visualmente antes de enviar
-                self.appendPlainText(command + '\n')
-                self.process.stdin.write(command + '\n')
-                self.process.stdin.flush()
+                # appendPlainText já lida com a exibição e a heurística de fim de comando
+                self.process.write((command + '\n').encode(QTextCodec.codecForLocale().name())) # Envia como bytes
+                # self.process.waitForBytesWritten() # Evitar ao máximo para não bloquear a UI
                 self.setReadOnly(True) # Torna somente leitura enquanto espera a resposta
                 print("Widget definido como somente leitura (enviando comando).") # Debug print
 
 
             except Exception as e:
-                print(f"Erro ao enviar comando: {e}") # Debug print
+                print(f"Erro ao enviar comando para QProcess: {e}") # Debug print
                 self.appendPlainText(f"Erro ao enviar comando: {e}\n")
                 self.setReadOnly(False)
                 self.moveCursor(self.textCursor().End)
-                self.command_start_position = self.textCursor().position() # Redefinir posição de início
+                self.command_start_position = self.textCursor().position()
 
         else:
-            print("send_command: Shell não iniciado ou stdin não disponível.") # Debug print
-            self.appendPlainText("Shell não iniciado ou stdin não disponível.\n")
+            print("send_command (QProcess): Processo não rodando ou não disponível.") # Debug print
+            self.appendPlainText("Shell não iniciado ou não disponível.\n")
 
 
-    # Lidar com eventos de teclado
+    # Lidar com eventos de teclado (mantido, ajustado para QProcess)
     def keyPressEvent(self, event):
-        if self.process and self.process.stdin and not self.isReadOnly():
+        if self.process and self.process.state() == QProcess.Running and not self.isReadOnly():
             cursor = self.textCursor()
             cursor_position_in_document = cursor.position()
 
@@ -150,75 +166,55 @@ class CustomTerminalWidget(QPlainTextEdit):
                 cursor.movePosition(cursor.StartOfLine, cursor.KeepAnchor)
                 current_line_with_prompt = cursor.selectedText()
 
-                # Extrair o texto digitado pelo usuário
-                # Calcula a posição relativa do cursor dentro do bloco atual
+                # Calcular o texto digitado pelo usuário
                 cursor_pos_in_block = cursor_position_in_document - cursor.block().position()
-                # Calcula a posição de início do comando dentro do bloco atual
                 command_start_pos_in_block = self.command_start_position - cursor.block().position()
-                # Pega o texto a partir da posição de início do comando dentro do bloco atual
-                command_text = current_line_with_prompt[command_start_pos_in_block:]
+                # Garante que a posição de início não seja negativa
+                command_text = current_line_with_prompt[max(0, command_start_pos_in_block):]
 
 
-                self.send_command(command_text.strip()) # Envia o comando (remove espaços em branco no início/fim)
+                self.send_command(command_text.strip())
 
 
-            # Lidar com Backspace
             elif event.key() == Qt.Key_Backspace:
-                 # Apenas apagar se o cursor estiver após a posição de início do comando
                  if cursor_position_in_document > self.command_start_position:
                      cursor.deletePreviousChar()
-                     # Não chamar super().keyPressEvent para evitar comportamento padrão
-                 # else: ignorar backspace antes do início do comando
 
-            # TODO: Implementar movimentação básica do cursor na linha de comando
-            # Evitar que o cursor vá para linhas anteriores ou antes do início do comando
             elif event.key() == Qt.Key_Left:
                 if cursor_position_in_document > self.command_start_position:
-                    super().keyPressEvent(event) # Permite mover para a esquerda
+                    super().keyPressEvent(event)
             elif event.key() == Qt.Key_Right:
-                 # Permitir mover para a direita, mas não além do final da linha atual (onde o cursor está)
-                 # Precisa verificar a posição do cursor
-                 if cursor_position_in_document < self.textCursor().block().position() + self.textCursor().block().length() - 1: # -1 para não ir para o newline invisível
-                      super().keyPressEvent(event) # Permite mover para a direita
+                 if cursor_position_in_document < self.textCursor().block().position() + self.textCursor().block().length() - 1:
+                      super().keyPressEvent(event)
 
             elif event.key() == Qt.Key_Up or event.key() == Qt.Key_Down:
-                 # TODO: Implementar histórico de comandos
-                 pass # Ignora teclas de seta para cima/baixo por enquanto
+                 pass
             elif event.key() == Qt.Key_Delete:
-                 # TODO: Implementar tecla Delete
-                 pass # Ignora tecla Delete por enquanto
+                 pass
             elif event.key() == Qt.Key_Home:
-                 # Mover para a posição de início do comando
                  cursor.movePosition(cursor.StartOfLine)
-                 cursor.movePosition(cursor.Right, cursor.MoveAnchor, self.command_start_position - cursor.position())
+                 cursor.movePosition(cursor.Right, cursor.MoveAnchor, max(0, self.command_start_position - cursor.position())) # Garante que a posição de movimento não seja negativa
                  self.setTextCursor(cursor)
 
             elif event.key() == Qt.Key_End:
-                 # Mover para o final da linha atual
                  self.moveCursor(self.textCursor().End)
 
 
             else:
-                # Para outras teclas (caracteres normais), adicionar o texto na posição do cursor
-                super().keyPressEvent(event) # Permite a inserção de texto
-                # Não move o cursor para o final aqui para permitir edição no meio da linha (básico)
-
+                super().keyPressEvent(event)
 
         else:
-            # Comportamento padrão para teclas quando o terminal não está editável ou processo não iniciado
             super().keyPressEvent(event)
 
 
     # Lidar com o fechamento do widget (terminar o processo do shell)
     def closeEvent(self, event):
-        if self.process:
-            try:
-                self.process.terminate() # Tenta encerrar o processo gracefully
-                self.process.wait(timeout=1) # Espera um pouco pelo encerramento
-            except subprocess.TimeoutExpired:
-                self.process.kill() # Se não encerrar, mata o processo
-            except Exception as e:
-                print(f"Erro ao encerrar processo do shell: {e}") # Imprime no console de depuração
+        if self.process and self.process.state() != QProcess.NotRunning:
+            print(f"Encerrando processo do shell ({self.shell_program}) ao fechar widget.") # Debug print
+            self.process.terminate()
+            if not self.process.waitForFinished(1000): # Espera no máximo 1 segundo
+                self.process.kill()
+                print("Processo do shell forçado a encerrar.") # Debug print
 
 
         super().closeEvent(event)
@@ -227,15 +223,11 @@ class CustomTerminalWidget(QPlainTextEdit):
 # Exemplo básico de uso (para teste individual do widget)
 if __name__ == '__main__':
     app = QApplication(sys.argv)
-    # Tentar detectar o shell apropriado
     shell_to_use = None
     if sys.platform.startswith('linux') or sys.platform == 'darwin':
         shell_to_use = "bash"
     elif sys.platform == 'win32':
         shell_to_use = "cmd.exe"
-        # shell_to_use = "powershell.exe" # Opcional: tentar Powershell
-    else:
-        shell_to_use = "sh" # Fallback para sh
 
     terminal = CustomTerminalWidget(shell_program=shell_to_use)
     terminal.setWindowTitle("Terminal Básico")
