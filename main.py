@@ -173,36 +173,48 @@ class IDE(QMainWindow):
         else:
             print("Operação de abrir arquivo cancelada.")
 
+    def current_editor(self):
+        return self.tab_widget.currentWidget() # Retorna o editor da aba ativa  
+    
     def save_file(self):
+        print("Método save_file chamado") # Debug print
+
+        current_editor = self.current_editor() # Obtém o editor da aba ativa
+        if not current_editor: # Se não houver editor ativo
+            print("Nenhum editor ativo para salvar.")
+            return # Sai do método
+        
         # Usar regex para verificar se o nome do arquivo atual corresponde ao padrão "sem titulo"
         is_untitled = False
-        original_file_path = self.current_file_path # Armazena o caminho original antes de potencial mudança
+        original_file_path = current_editor.current_file_path # Armazena o caminho original antes de potencial mudança
 
-        if self.current_file_path:
-            file_info = QFileInfo(self.current_file_path)
+        if current_editor.current_file_path:
+            file_info = QFileInfo(current_editor.current_file_path)
             file_name = file_info.fileName()
             import re
             pattern = r"^sem titulo(\s\d+)?\.txt$"
             if re.match(pattern, file_name):
                 is_untitled = True
 
-        if self.current_file_path and not is_untitled:
+        if current_editor.current_file_path and not is_untitled:
             # Salvar em arquivo existente (não "sem titulo")
+            print("Tentando salvar em arquivo existente") # Debug print
             try:
-                content = self.editor.toPlainText()
-                with open(self.current_file_path, 'w', encoding='utf-8') as f:
+                content = current_editor.editor.toPlainText()
+                with open(current_editor.current_file_path, 'w', encoding='utf-8') as f:
                     f.write(content)
-                print(f"Arquivo salvo: {self.current_file_path}")
+                print(f"Arquivo salvo: {current_editor.current_file_path}")
             except Exception as e:
                 print(f"Erro ao salvar o arquivo: {e}")
         else:
             # "Salvar como" para arquivos sem título ou sem caminho definido
+            print("Executando 'Salvar como'") # Debug print
             options = QFileDialog.Options()
 
             # Sugerir o nome atual se for um arquivo "sem titulo"
             initial_file_name = ""
-            if self.current_file_path: # Verificar se self.current_file_path não é None antes de tentar obter o nome
-                 file_info = QFileInfo(self.current_file_path)
+            if current_editor.current_file_path: # Verificar se self.current_file_path não é None antes de tentar obter o nome
+                 file_info = QFileInfo(current_editor.current_file_path)
                  file_name = file_info.fileName()
                  # Re-verificar o padrão aqui para garantir que sugere apenas para "sem titulo"
                  import re
@@ -214,9 +226,11 @@ class IDE(QMainWindow):
             # Usar self.current_folder_path como o diretório inicial para o diálogo de salvar
             file_path, _ = QFileDialog.getSaveFileName(self, "Salvar Arquivo", self.current_folder_path, "Todos os Arquivos (*);;Arquivos de Texto (*.txt)", initial_file_name, options=options)
 
+            print(f"Caminho retornado por getSaveFileName: {file_path}") # Debug print
+            
             if file_path:
                 try:
-                    content = self.editor.toPlainText()
+                    content = current_editor.editor.toPlainText()
 
                     # Implementar exclusão do arquivo antigo "sem titulo" se o nome mudou
                     # Usar original_file_path para a verificação
@@ -231,9 +245,11 @@ class IDE(QMainWindow):
                     with open(file_path, 'w', encoding='utf-8') as f:
                         f.write(content)
 
-                    self.current_file_path = file_path # Atualiza o caminho do arquivo atual
-                    self.setWindowTitle(f'Minha IDE Simples - {QFileInfo(self.current_file_path).fileName()}') # Atualiza o título
-                    print(f"Arquivo salvo: {self.current_file_path}")
+                    current_editor.current_file_path = file_path # Atualiza o caminho do arquivo atual
+                    file_name_saved = QFileInfo(file_path).fileName()
+                    self.setWindowTitle(f'Minha IDE Simples - {file_name_saved}') # Atualiza o título da janela principal
+                    self.tab_widget.setTabText(self.tab_widget.currentIndex(), file_name_saved) # Atualiza o título da aba
+                    print(f"Arquivo salvo: {file_path}")
                     # Atualizar o File Explorer pode ser necessário para refletir a renomeação/novo arquivo
                     # Define a raiz do modelo e da view para a pasta onde o arquivo foi salvo
                     saved_file_dir = QFileInfo(file_path).dir().absolutePath()
@@ -247,6 +263,7 @@ class IDE(QMainWindow):
             else:
                 print("Operação de salvar cancelada.")
 
+    
     # **Novo método para "Salvar como"**
     def save_file_as(self):
         print("Action \'Salvar como...\' triggered")
@@ -270,7 +287,7 @@ class IDE(QMainWindow):
 
         if file_path:
             try:
-                content = self.editor.toPlainText()
+                content = current_editor.editor.toPlainText()
 
                 # Para "Salvar como", geralmente não excluímos o arquivo original
                 # a menos que seja um caso específico de renomear um "sem titulo"
@@ -286,7 +303,7 @@ class IDE(QMainWindow):
                 self.setWindowTitle(f'Minha IDE Simples - {file_name_saved}') # Atualiza o título da janela principal
                 self.tab_widget.setTabText(self.tab_widget.currentIndex(), file_name_saved) # Atualiza o título da aba
                 print(f"Arquivo salvo como: {file_path}")
-                # Atualizar o File Explorer para refletir o novo arquivo/caminho
+                 # Atualizar o File Explorer para refletir o novo arquivo/caminho
                 saved_file_dir = QFileInfo(file_path).dir().absolutePath()
                 self.file_system_model.setRootPath(saved_file_dir)
                 self.file_tree_view.setRootIndex(self.file_system_model.index(saved_file_dir))
