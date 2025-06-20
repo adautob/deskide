@@ -182,6 +182,14 @@ class CustomTerminalWidget(QPlainTextEdit):
                 cursor.movePosition(cursor.StartOfLine, cursor.KeepAnchor)
                 current_line_text = cursor.selectedText()
 
+                # **Debug prints para inspecionar os valores antes do fatiamento**
+                print(f"keyPressEvent (Enter): current_line_text = {repr(current_line_text)}")
+                print(f"keyPressEvent (Enter): len(current_line_text) = {len(current_line_text)}")
+                print(f"keyPressEvent (Enter): self.command_start_position = {self.command_start_position}")
+                print(f"keyPressEvent (Enter): cursor_position_in_document (before Enter) = {cursor_position_in_document}")
+                print(f"keyPressEvent (Enter): cursor.block().position() = {cursor.block().position()}")
+
+
                 # Calcular a posição de início do comando relativa ao início da linha
                 command_start_pos_in_line = self.command_start_position - cursor.block().position()
                 # Garante que a posição de início relativa não seja negativa
@@ -192,9 +200,13 @@ class CustomTerminalWidget(QPlainTextEdit):
                 # Garante que a posição do cursor relativa não seja negativa
                 cursor_pos_in_line = max(0, cursor_pos_in_line)
 
+                # **Debug prints para inspecionar posições relativas**
+                print(f"keyPressEvent (Enter): command_start_pos_in_line = {command_start_pos_in_line}")
+                print(f"keyPressEvent (Enter): cursor_pos_in_line = {cursor_pos_in_line}")
 
-                # **CORREÇÃO FINAL (Tentativa 3):** Fatiar a string da linha atual usando posições relativas
-                command_text = current_line_text[command_start_pos_in_line : cursor_pos_in_line] # <-- Fatiar a string da linha atual
+
+                # CORREÇÃO FINAL (Tentativa 3): Fatiar a string da linha atual usando posições relativas
+                command_text = current_line_text[command_start_pos_in_line : cursor_pos_in_line]
 
 
                 # Remover quebras de linha e espaços em branco do início/fim
@@ -206,10 +218,10 @@ class CustomTerminalWidget(QPlainTextEdit):
 
 
                 # Adicionar a linha digitada com prompt ao display antes de enviar
-                self.appendPlainText(current_line_text + '\n') # Adicionar a linha digitada (com prompt) ao display visualmente
+                self.appendPlainText(current_line_text + '\n')
 
 
-                self.send_command(command_text) # Enviar SOMENTE o comando real
+                self.send_command(command_text)
 
                 # Resetar a posição de início do comando APÓS enviar (será ajustado por handle_output_displayed)
                 # self.command_start_position = self.textCursor().position() # Não resetar aqui, handle_output_displayed fará isso
