@@ -18,7 +18,7 @@ class IDE(QMainWindow):
 
         # **Definir sua chave de API do Gemini aqui (use um método seguro para gerenciar chaves em produção)**
         # Por enquanto, use um placeholder ou leia de uma variável de ambiente/arquivo de configuração
-        self.gemini_api_key = "SUA_CHAVE_DE_API_DO_GEMINI" # SUBSTITUA PELA SUA CHAVE REAL OU MÉTODO SEGURO
+        self.gemini_api_key = "AIzaSyBZl62T-QP2U8aVtvcWY5k8Y2Dv4veeZeQ" # SUBSTITUA PELA SUA CHAVE REAL OU MÉTODO SEGURO
 
 
         self.initUI()
