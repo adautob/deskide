@@ -22,7 +22,7 @@ class GeminiWorker(QObject):
     # ... (código da classe GeminiWorker) ...
 
 
-class AIChatWidget(QWidget):
+    class AIChatWidget(QWidget):
     thinking_status = Signal(bool)
 
     def __init__(self, parent=None, api_key=None):
