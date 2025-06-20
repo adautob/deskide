@@ -155,40 +155,40 @@ class AIChatWidget(QWidget):
 
 
     def send_message(self):
-    if not self.chat_session:
-         self.append_message("Sistema", "Sessão de chat da IA não iniciada. Verifique sua chave de API.")
-         return
+        if not self.chat_session:
+            self.append_message("Sistema", "Sessão de chat da IA não iniciada. Verifique sua chave de API.")
+            return
 
-    user_text = self.user_input.text().strip()
-    if user_text:
-        self.append_message("Você", user_text)
-        self.user_input.clear()
-        self.user_input.setDisabled(True)
-        self.send_button.setDisabled(True)
-        self.thinking_status.emit(True)
+        user_text = self.user_input.text().strip()
+        if user_text:
+            self.append_message("Você", user_text)
+            self.user_input.clear()
+            self.user_input.setDisabled(True)
+            self.send_button.setDisabled(True)
+            self.thinking_status.emit(True)
 
-        # **Criar Worker e Thread para chamar a API**
-        self.thread = QThread()
-        self.worker = GeminiWorker(self.chat_session, user_text)
-        self.worker.moveToThread(self.thread)
+            # **Criar Worker e Thread para chamar a API**
+            self.thread = QThread()
+            self.worker = GeminiWorker(self.chat_session, user_text)
+            self.worker.moveToThread(self.thread)
 
-        # Conectar sinais do worker e da thread
-        self.thread.started.connect(self.worker.run)
-        self.worker.finished.connect(self.thread.quit)
-        self.worker.finished.connect(self.worker.deleteLater)
-        self.thread.finished.connect(self.thread.deleteLater)
+            # Conectar sinais do worker e da thread
+            self.thread.started.connect(self.worker.run)
+            self.worker.finished.connect(self.thread.quit)
+            self.worker.finished.connect(self.worker.deleteLater)
+            self.thread.finished.connect(self.thread.deleteLater)
 
-        # Conectar o sinal finished do worker ao slot handle_api_task_finished para reabilitar a UI
-        self.worker.finished.connect(self.handle_api_task_finished)
+            # Conectar o sinal finished do worker ao slot handle_api_task_finished para reabilitar a UI
+            self.worker.finished.connect(self.handle_api_task_finished)
 
 
-        # Conectar sinais de resposta/erro do worker aos slots no widget principal
-        self.worker.response_ready.connect(self.receive_ai_response)
-        self.worker.error.connect(self.handle_ai_error)
+            # Conectar sinais de resposta/erro do worker aos slots no widget principal
+            self.worker.response_ready.connect(self.receive_ai_response)
+            self.worker.error.connect(self.handle_ai_error)
 
-        self.thread.start()
+            self.thread.start()
 
-        print(f"Mensagem do usuário enviada para processamento da API (via Worker).")
+            print(f"Mensagem do usuário enviada para processamento da API (via Worker).")
 
 
 @pyqtSlot(str)
