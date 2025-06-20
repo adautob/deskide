@@ -124,9 +124,25 @@ class IDE(QMainWindow):
         open_folder_action.triggered.connect(self.open_folder)
         project_menu.addAction(open_folder_action)
 
+        top_splitter.addWidget(self.file_tree_view) # Adiciona ao splitter superior
+
+        # **Tab Widget principal para a área de Editores E Chat**
+        self.main_tab_widget = QTabWidget() # Cria a instância e atribui a self.main_tab_widget
+        self.main_tab_widget.setTabsClosable(True) # Permite fechar abas
+        self.main_tab_widget.tabCloseRequested.connect(self.close_tab)
+        self.main_tab_widget.currentChanged.connect(self.update_title_on_tab_change)
+
+        top_splitter.addWidget(self.main_tab_widget) # Adiciona o main_tab_widget ao splitter superior
+
+
+        # **Adicionar o widget de chat de IA como uma nova aba**
+        # Passa a chave de API para o widget de chat
+        self.ai_chat_widget = AIChatWidget(api_key=self.gemini_api_key)
+        self.main_tab_widget.addTab(self.ai_chat_widget, "Chat de IA")
+
 
         self.show()
-        top_bottom_splitter.addWidget(self.terminal_widget) # Adiciona o terminal ao splitter principal
+        
 
     # Método auxiliar para obter o widget da aba ativa (pode ser um CodeEditor ou o AIChatWidget)
     # Precisará verificar o tipo do widget
