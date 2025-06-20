@@ -178,40 +178,29 @@ class CustomTerminalWidget(QPlainTextEdit):
 
             if event.key() == Qt.Key_Return or event.key() == Qt.Key_Enter:
                 # Capturar o texto APENAS na área digitável
-                cursor.movePosition(cursor.End, cursor.KeepAnchor) # Vai para o final, mantendo a seleção
-                cursor.movePosition(cursor.StartOfLine, cursor.KeepAnchor) # Seleciona a linha inteira
-                full_line_text = cursor.selectedText() # Pega a linha inteira como texto simples
+                # Pegar o texto do documento a partir de self.command_start_position até a posição atual do cursor
+                cursor.movePosition(cursor_position_in_document) # Posiciona o cursor no final do texto digitado
+                cursor.movePosition(cursor.Start, cursor.KeepAnchor) # Seleciona do início do documento até a posição atual
+                text_until_cursor = cursor.selectedText() # Pega todo o texto do documento até a posição atual
 
-                # **Debug prints para inspecionar antes de extrair command_text**
-                print(f"keyPressEvent (Enter): full_line_text = {repr(full_line_text)}")
-                print(f"keyPressEvent (Enter): self.command_start_position = {self.command_start_position}")
-                print(f"keyPressEvent (Enter): cursor_position_in_document (before Enter) = {cursor_position_in_document}")                
-                
-                # Calcular a posição de início do comando relativa ao início da linha
-                command_start_pos_in_line = self.command_start_position - cursor.block().position()
-                # Garante que a posição de início relativa não seja negativa
-                command_start_pos_in_line = max(0, command_start_pos_in_line)
+                # Extrair apenas o texto digitado pelo usuário (após self.command_start_position)
+                command_text = text_until_cursor[self.command_start_position :] # <--- CORREÇÃO FINAL: Fatiar a partir de self.command_start_position global
 
-                # Calcular o texto digitado pelo usuário
-                # Fatiar full_line_text a partir da posição de início relativa até a posição do cursor antes do Enter, também relativa à linha.
-                cursor_pos_in_line = cursor_position_in_document - cursor.block().position()
-                # Garante que a posição do cursor relativa não seja negativa
-                cursor_pos_in_line = max(0, cursor_pos_in_line)
-
-
-                # **CORREÇÃO:** Fatiar full_line_text usando posições RELATIVAS à linha
-                command_text = full_line_text[command_start_pos_in_line : cursor_pos_in_line] # <-- Usar fatiamento com posições relativas
 
                 # Remover quebras de linha e espaços em branco do início/fim
                 command_text = command_text.strip()
 
-                # **Debug print para inspecionar command_text ANTES de enviar**
+                # Debug print para inspecionar command_text ANTES de enviar
                 print(f"keyPressEvent (Enter): Extracted command_text (before strip) = {repr(command_text)}")
                 print(f"keyPressEvent (Enter): Extracted command_text (after strip) = {repr(command_text.strip())}")
 
 
                 # Adicionar a linha digitada com prompt ao display antes de enviar
-                self.appendPlainText(full_line_text[ : cursor_pos_in_line] + '\n') # Adicionar a linha digitada (sem o prompt final) ao display
+                # Capturar a linha atual para exibir no terminal
+                cursor.movePosition(cursor_position_in_document) # Volta o cursor para a posição original
+                cursor.movePosition(cursor.StartOfLine, cursor.KeepAnchor) # Seleciona a linha atual
+                current_line_for_display = cursor.selectedText()
+                self.appendPlainText(current_line_for_display + '\n') # Adicionar a linha digitada (com prompt) ao display visualmente
 
 
                 self.send_command(command_text) # Enviar SOMENTE o comando real
