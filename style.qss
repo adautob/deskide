@@ -79,11 +79,11 @@ QTreeView::item:selected {
 /* Estilo para QTextEdit (Editor de Código) */
 /* Nota: Este estilo pode afetar o QWebEngineView se não for substituído por CSS interno */
 QTextEdit {
-    background-color: #1e1e1e; /* Fundo bem escuro (VS Code) */
-    color: #d4d4d4; /* Cor de texto clara */
-    border: 1px solid #333;
-    font-family: "Courier New", Consolas, monospace; /* Fonte monoespaçada para código */
-    font-size: 10pt;
+    /* background-color: #1e1e1e; */ /* Comente ou remova fundos para focar na fonte */
+    /* color: #d4d4d4; */
+    font-family: "Courier New", Consolas, monospace;
+    font-size: 20pt; /* Tamanho muito grande para ser óbvio */
+    /* border: 1px solid #333; */
 }
 
 /* Estilo para QLineEdit (Entrada no Chat) */
