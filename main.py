@@ -60,7 +60,7 @@ class IDE(QMainWindow):
         for i in range(1, 4):
             self.file_tree_view.hideColumn(i)
 
-top_splitter.addWidget(self.file_tree_view) # Adiciona o File Explorer ao splitter superior
+        top_splitter.addWidget(self.file_tree_view) # Adiciona o File Explorer ao splitter superior
 
         # **Tab Widget principal para a área de Editores E Chat**
         # ESTA SEÇÃO PRECISA ESTAR AQUI, ANTES DE USAR self.main_tab_widget
