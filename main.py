@@ -526,7 +526,7 @@ class IDE(QMainWindow):
     def update_title_on_tab_change(self, index):
         print(f"Mudança de aba para o índice: {index}")
         if index != -1: # Verifica se há alguma aba ativa
-             current_editor = self.tab_widget.widget(index)
+             current_editor = self.main_tab_widget.widget(index)
              if current_editor and hasattr(current_editor, 'current_file_path'):
                  if current_editor.current_file_path:
                      file_name = QFileInfo(current_editor.current_file_path).fileName()
