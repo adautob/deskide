@@ -263,7 +263,7 @@ if __name__ == '__main__':
     # Exemplo: ler de uma variável de ambiente
     # import os
     # api_key = os.environ.get("GEMINI_API_KEY")
-    api_key = "SUA_CHAVE_DE_API_DO_GEMINI" # Substitua ou use o método seguro
+    api_key = "AIzaSyBZl62T-QP2U8aVtvcWY5k8Y2Dv4veeZeQ" # Substitua ou use o método seguro
 
     chat_widget = AIChatWidget(api_key=api_key)
     chat_widget.setWindowTitle("Chat de IA Básico com Gemini")
