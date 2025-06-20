@@ -1,23 +1,169 @@
-/* style.qss */
+/* style.qss - Estilos mais agradáveis para a IDE */
 
-/* Estilo de teste: fundo vermelho para o File Explorer */
+/* Estilo básico para todos os QWidget */
+QWidget {
+    background-color: #2e2e2e; /* Fundo escuro principal */
+    color: #cccccc; /* Cor de texto clara */
+    font-family: "Segoe UI", Arial, sans-serif; /* Fonte mais moderna */
+    font-size: 10pt;
+}
+
+/* Estilo para QMainWindow (janela principal) */
+QMainWindow {
+    background-color: #2e2e2e; /* Fundo escuro */
+}
+
+/* Estilo para QMenuBar */
+QMenuBar {
+    background-color: #3c3c3c;
+    color: #cccccc;
+}
+
+QMenuBar::item {
+    spacing: 3px; /* Espaçamento entre os itens do menu */
+    padding: 2px 10px;
+    background-color: transparent;
+    border-radius: 4px;
+}
+
+QMenuBar::item:selected { /* quando um item é realçado */
+    background: #555;
+}
+
+QMenuBar::item:pressed {
+    background: #444;
+}
+
+/* Estilo para QMenu */
+QMenu {
+    background-color: #3c3c3c; /* Fundo do menu dropdown */
+    color: #cccccc;
+    border: 1px solid #555;
+}
+
+QMenu::item {
+    padding: 2px 25px 2px 20px; /* espaçamento para submenus */
+    border: 1px solid transparent; /* para que os atalhos não balancem */
+}
+
+QMenu::item:selected {
+    background-color: #555;
+}
+
+QMenu::separator {
+    height: 1px;
+    background: #555;
+    margin-left: 10px;
+    margin-right: 5px;
+}
+
+/* Estilo para QTreeView (File Explorer) */
 QTreeView {
-    background-color: red; /* MUITO VISÍVEL para testar */
-    border: 2px solid blue;
+    background-color: #3c3c3c; /* Fundo escuro */
+    color: #cccccc; /* Cor de texto clara */
+    alternate-background-color: #444; /* Cor para linhas alternadas */
+    border: 1px solid #555;
+    selection-background-color: #007acc; /* Azul de seleção do VS Code */
+    selection-color: white; /* Cor de texto branco na seleção */
+    show-decoration-selected: 1; /* mostra ícones coloridos na seleção */
 }
 
-/* Estilo de teste: fundo verde para o Editor de Código */
+QTreeView::item {
+    padding: 2px 0; /* Espaçamento vertical dos itens */
+}
+
+QTreeView::item:selected {
+    border: none; /* Remover borda na seleção se houver */
+}
+
+/* Estilo para QTextEdit (Editor de Código) */
+/* Nota: Este estilo pode afetar o QWebEngineView se não for substituído por CSS interno */
 QTextEdit {
-    background-color: green; /* MUITO VISÍVEL para testar */
-    color: white;
-    border: 2px solid yellow;
+    background-color: #1e1e1e; /* Fundo bem escuro (VS Code) */
+    color: #d4d4d4; /* Cor de texto clara */
+    border: 1px solid #333;
+    font-family: "Courier New", Consolas, monospace; /* Fonte monoespaçada para código */
+    font-size: 10pt;
 }
 
-/* Estilo de teste: fundo azul para a entrada de texto do chat */
+/* Estilo para QLineEdit (Entrada no Chat) */
 QLineEdit {
-    background-color: blue; /* MUITO VISÍVEL para testar */
-    color: white;
-    border: 2px solid purple;
+    background-color: #3c3c3c;
+    color: #cccccc;
+    border: 1px solid #555;
+    padding: 5px;
+    border-radius: 3px;
 }
 
-/* Mantenha ou remova outros estilos por enquanto */
+/* Estilo para QPushButton */
+QPushButton {
+    background-color: #007acc; /* Azul (VS Code) */
+    color: white;
+    border: none; /* Remover borda padrão */
+    padding: 6px 12px;
+    border-radius: 3px;
+}
+
+QPushButton:hover {
+    background-color: #005f99; /* Azul mais escuro no hover */
+}
+
+QPushButton:pressed {
+    background-color: #004d80; /* Azul ainda mais escuro no clique */
+}
+
+/* Estilo para QTabWidget */
+QTabWidget::pane {
+    border: 1px solid #555;
+    top: -1px;
+    background-color: #1e1e1e; /* Cor de fundo da área do painel */
+}
+
+QTabWidget::tab-bar {
+    left: 5px;
+}
+
+QTabBar::tab {
+    background: #3c3c3c; /* Fundo das abas inativas */
+    color: #cccccc;
+    border: 1px solid #555;
+    border-bottom-color: #555;
+    border-top-left-radius: 4px;
+    border-top-right-radius: 4px;
+    padding: 5px 10px;
+    margin-right: 2px;
+}
+
+QTabBar::tab:selected, QTabBar::tab:hover {
+    background: #1e1e1e; /* Fundo das abas ativas ou com hover */
+    color: white;
+    border-bottom-color: #1e1e1e; /* Cor de fundo do painel */
+}
+
+QTabBar::tab:selected {
+    border-bottom: none;
+}
+
+/* Estilo para QSplitter */
+QSplitter::handle {
+    background-color: #555;
+}
+
+QSplitter::handle:horizontal {
+    width: 5px;
+}
+
+QSplitter::handle:vertical {
+    height: 5px;
+}
+
+QSplitter::handle:hover {
+    background-color: #007acc; /* Cor de destaque ao passar o mouse */
+}
+
+/* Estilo para QWebEngineView (Chat History) */
+/* A estilização interna é feita com CSS dentro do HTML gerado no update_display. */
+/* Podemos estilizar a borda externa do widget aqui. */
+QWebEngineView {
+    border: 1px solid #555;
+}
