@@ -8,9 +8,7 @@ import os
 import re
 
 from editor import CodeEditor
-
-# **Importar o widget de terminal**
-from qtermwidget.terminal import QTermWidget
+from terminal_widget import CustomTerminalWidget
 
 
 class IDE(QMainWindow):
@@ -69,10 +67,7 @@ class IDE(QMainWindow):
         top_splitter.setSizes([200, 800])
 
         # **Terminal Widget**
-        self.terminal_widget = QTermWidget() # Cria a instância do terminal
-        # Você pode configurar o shell, cores, etc. aqui se necessário
-        # self.terminal_widget.setShellProgram("bash") # Exemplo: definir o shell para bash
-        top_bottom_splitter.addWidget(self.terminal_widget) # Adiciona o terminal ao splitter principal
+ self.terminal_widget = CustomTerminalWidget()
 
         # Define a proporção inicial do splitter principal (área superior e terminal)
         top_bottom_splitter.setSizes([600, 200]) # 600px para a área superior, 200px para o terminal
@@ -114,6 +109,7 @@ class IDE(QMainWindow):
 
 
         self.show()
+ top_bottom_splitter.addWidget(self.terminal_widget) # Adiciona o terminal ao splitter principal
 
     # Método auxiliar para obter o editor da aba ativa
     def current_editor(self):
