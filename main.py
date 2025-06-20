@@ -444,7 +444,7 @@ class IDE(QMainWindow):
 
             # **Limpar todas as abas ao abrir uma nova pasta**
             # Você pode querer perguntar ao usuário se deseja salvar antes de fechar abas modificadas
-            while self.main_'tab_widget.count() > 0:
+            while self.main_tab_widget.count() > 0:
                  # Implementar lógica de "Salvar antes de fechar" aqui, se necessário
                  widget_to_close = self.main_tab_widget.widget(0)
                  widget_to_close.deleteLater()
