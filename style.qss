@@ -167,3 +167,17 @@ QSplitter::handle:hover {
 QWebEngineView {
     border: 1px solid #555;
 }
+
+
+/* **Estilo para o widget de texto dentro do CustomTerminalWidget** */
+/* Assumindo que o CustomTerminalWidget usa um QTextEdit internamente */
+CustomTerminalWidget QTextEdit {
+    font-family: "Courier New", Consolas, monospace; /* Fonte monoespaçada */
+    font-size: 10pt; /* Tamanho da fonte (ajuste conforme preferir) */
+    /* Outros estilos como cor de fundo, cor do texto podem ser adicionados aqui */
+    background-color: #1a1a1a; /* Fundo ainda mais escuro para o terminal */
+    color: #cccccc; /* Cor de texto clara */
+    border: none; /* Sem borda para o texto interno do terminal */
+}
+
+/* ... (outros estilos) ... */
