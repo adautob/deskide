@@ -2,7 +2,7 @@
 
 import sys
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QTextEdit, QLineEdit, QPushButton, QHBoxLayout, QApplication
-from PyQt5.QtCore import Qt, QTimer, pyqtSignal as Signal, QThread, QObject, pyqtSlot # Adicionado QThread, QObject, pyqtSlot
+from PyQt5.QtCore import Qt, QTimer, pyqtSignal as Signal, QThread, QObject, pyqtSlot
 
 # **Importar a biblioteca do Gemini**
 import google.generativeai as genai
@@ -31,9 +31,14 @@ class GeminiWorker(QObject):
             # Extrair o texto da resposta
             ai_text = ""
             try:
-                ai_text = response.text # Tenta obter o texto diretamente
+                # Tenta obter o texto diretamente. Lida com ContentEmpty ou outros erros.
+                if response and hasattr(response, 'text'):
+                    ai_text = response.text
+                else:
+                     ai_text = f"Resposta da IA não contém texto (ou está vazia): {response}"
+
             except Exception as e:
-                ai_text = f"Erro ao extrair texto da resposta da IA: {e}\n{response}" # Exibe a resposta completa em caso de erro
+                ai_text = f"Erro ao extrair texto da resposta da IA: {e}\nResposta completa: {response}"
 
 
             print(f"Worker: Texto da IA extraído: {ai_text}") # Debug print
@@ -44,6 +49,7 @@ class GeminiWorker(QObject):
             self.error.emit(f"Erro na comunicação com a IA: {e}") # Emite o sinal de erro
 
         finally:
+            print("Worker: Tarefa finalizada.") # Debug print
             self.finished.emit() # Emite o sinal de finalização
 
 
@@ -62,7 +68,6 @@ class AIChatWidget(QWidget):
             try:
                 genai.configure(api_key=self.api_key)
                 # Inicializar o modelo de conversação (chat)
-                # Usando um modelo que suporta chat
                 self.model = genai.GenerativeModel('gemini-1.5-flash-latest') # Use o modelo apropriado
                 self.chat_session = self.model.start_chat(history=[]) # Iniciar uma nova sessão de chat com histórico vazio
                 print("API do Gemini configurada e sessão de chat iniciada.") # Debug print
@@ -77,6 +82,9 @@ class AIChatWidget(QWidget):
 
         self.initUI()
         self.thinking_status.connect(self.update_send_button_status)
+
+        # Conectar o sinal finished do worker ao slot handle_api_task_finished (precisa ser conectado DEPOIS que o worker for criado)
+        # Esta conexão agora é feita dentro de send_message
 
 
     def initUI(self):
@@ -104,13 +112,13 @@ class AIChatWidget(QWidget):
     def append_message(self, sender, message):
         formatted_message = f"<b>{sender}:</b> {message}<br>"
         self.history_display.append(formatted_message)
-        self.history_display.ensureCursorVisible() # Garante que o texto adicionado seja visível
+        self.history_display.ensureCursorVisible()
 
 
     def send_message(self):
         if not self.chat_session:
              self.append_message("Sistema", "Sessão de chat da IA não iniciada. Verifique sua chave de API.")
-             return # Sai se a sessão de chat não estiver pronta
+             return
 
         user_text = self.user_input.text().strip()
         if user_text:
@@ -118,66 +126,76 @@ class AIChatWidget(QWidget):
             self.user_input.clear()
             self.user_input.setDisabled(True)
             self.send_button.setDisabled(True)
-            self.thinking_status.emit(True) # Indica que a IA está pensando
+            self.thinking_status.emit(True)
 
             # **Criar Worker e Thread para chamar a API**
-            self.thread = QThread() # Cria uma nova thread
-            self.worker = GeminiWorker(self.chat_session, user_text) # Cria o worker com a sessão de chat e mensagem
-            self.worker.moveToThread(self.thread) # Move o worker para a thread
+            self.thread = QThread()
+            self.worker = GeminiWorker(self.chat_session, user_text)
+            self.worker.moveToThread(self.thread)
 
-            # Conectar sinais do worker aos slots no widget principal
-            self.thread.started.connect(self.worker.run) # Quando a thread iniciar, execute o método run do worker
-            self.worker.finished.connect(self.thread.quit) # Quando o worker terminar, saia da thread
-            self.worker.finished.connect(self.worker.deleteLater) # Limpa o worker da memória
-            self.thread.finished.connect(self.thread.deleteLater) # Limpa a thread da memória
+            # Conectar sinais do worker e da thread
+            self.thread.started.connect(self.worker.run)
+            self.worker.finished.connect(self.thread.quit)
+            self.worker.finished.connect(self.worker.deleteLater)
+            self.thread.finished.connect(self.thread.deleteLater)
+
+            # Conectar o sinal finished do worker ao slot handle_api_task_finished para reabilitar a UI
+            self.worker.finished.connect(self.handle_api_task_finished) # Conexão importante aqui
+
 
             # Conectar sinais de resposta/erro do worker aos slots no widget principal
             self.worker.response_ready.connect(self.receive_ai_response)
             self.worker.error.connect(self.handle_ai_error)
 
+            self.thread.start()
 
-            self.thread.start() # Inicia a thread
-
-            print(f"Mensagem do usuário enviada para processamento da API.")
+            print(f"Mensagem do usuário enviada para processamento da API (via Worker).")
 
 
-    @pyqtSlot(str) # Indica que este slot espera uma string
+    @pyqtSlot(str)
     def receive_ai_response(self, ai_text):
-        # Chamado quando a resposta da IA é recebida do worker
-        print(f"Recebendo resposta da IA: {ai_text}") # Debug print
+        print(f"Recebendo resposta da IA: {ai_text}")
         self.append_message("IA", ai_text)
-        # Reabilitação da UI acontece no slot handle_api_task_finished (conectado ao worker.finished)
-        # self.user_input.setDisabled(False)
-        # self.send_button.setDisabled(False)
-        # self.user_input.setFocus()
+        # Reabilitação da UI agora é agendada em handle_api_task_finished
 
 
-    @pyqtSlot(str) # Indica que este slot espera uma string de erro
+    @pyqtSlot(str)
     def handle_ai_error(self, error_message):
-        # Chamado em caso de erro na chamada da API
-        print(f"Erro da API da IA: {error_message}") # Debug print
+        print(f"Erro da API da IA: {error_message}")
         self.append_message("Sistema", f"Erro na comunicação com a IA: {error_message}")
-        # Reabilitação da UI acontece no slot handle_api_task_finished (conectado ao worker.finished)
+        # Reabilitação da UI agora é agendada em handle_api_task_finished
 
 
-    @pyqtSlot() # Indica que este slot não espera argumentos
+    @pyqtSlot()
     def handle_api_task_finished(self):
-        print("--> Início handle_api_task_finished") # Debug print no início
+        print("--> Início handle_api_task_finished")
         try:
-            print("Reabilitando UI: user_input e send_button.") # Debug print
-            self.user_input.setDisabled(False)
-            self.send_button.setDisabled(False)
-            self.user_input.setFocus()
-            self.thinking_status.emit(False)
-            print("UI reabilitada.") # Debug print
+            print("Agendando reabilitação da UI com QTimer.singleShot(0).")
+            # **Agendar a reabilitação da UI na próxima iteração do loop de eventos**
+            QTimer.singleShot(0, self._re_enable_ui)
+
         except Exception as e:
-            print(f"Erro durante reabilitação da UI em handle_api_task_finished: {e}") # Debug print para exceções
-        print("<-- Fim handle_api_task_finished") # Debug print no final
+            print(f"Erro durante agendamento da reabilitação da UI: {e}")
+        print("<-- Fim handle_api_task_finished")
 
 
-    @pyqtSlot(bool) # Indica que este slot espera um booleano
+    @pyqtSlot() # Novo slot para a reabilitação da UI agendada
+    def _re_enable_ui(self):
+         print("--> Início _re_enable_ui")
+         try:
+             print("Executando reabilitação da UI: user_input e send_button.")
+             self.user_input.setDisabled(False)
+             self.send_button.setDisabled(False)
+             self.user_input.setFocus()
+             self.thinking_status.emit(False)
+             print("UI reabilitada com sucesso em _re_enable_ui.")
+         except Exception as e:
+             print(f"Erro durante execução da reabilitação da UI em _re_enable_ui: {e}")
+         print("<-- Fim _re_enable_ui")
+
+
+    @pyqtSlot(bool)
     def update_send_button_status(self, thinking):
-        # Slot para atualizar o status visual do botão e entrada
         if thinking:
             self.send_button.setText("Pensando...")
             self.send_button.setDisabled(True)
@@ -186,7 +204,7 @@ class AIChatWidget(QWidget):
             self.send_button.setText("Enviar")
             self.send_button.setDisabled(False)
             self.user_input.setDisabled(False)
-            self.user_input.setFocus()
+            # self.user_input.setFocus() # Não definir foco aqui, pois pode interferir com outras ações
 
 
 # Exemplo básico de uso (para teste individual do widget)
@@ -198,7 +216,7 @@ if __name__ == '__main__':
     # Exemplo: ler de uma variável de ambiente
     # import os
     # api_key = os.environ.get("GEMINI_API_KEY")
-    api_key = "AIzaSyBZl62T-QP2U8aVtvcWY5k8Y2Dv4veeZeQ" # Substitua ou use o método seguro
+    api_key = "SUA_CHAVE_DE_API_DO_GEMINI" # Substitua ou use o método seguro
 
     chat_widget = AIChatWidget(api_key=api_key)
     chat_widget.setWindowTitle("Chat de IA Básico com Gemini")
