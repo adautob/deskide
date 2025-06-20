@@ -158,6 +158,9 @@ class CustomTerminalWidget(QPlainTextEdit):
                 print(f"Enviando comando para QProcess: {command}") # Debug print
                 # Adiciona a linha digitada e uma nova linha visualmente antes de enviar
                 # appendPlainText já lida com a exibição e a heurística de fim de comando
+                print(f"Enviando comando para QProcess (string original): {repr(command)}") # <-- Debug print
+                print(f"Enviando comando para QProcess (com newline): {repr(command + '\\n')}") # <-- Debug print
+                
                 self.process.write((command + '\n').encode(locale.getpreferredencoding(False))) # Envia como bytes usando a codificação do sistema
                 # self.process.waitForBytesWritten() # Evitar ao máximo para não bloquear a UI
                 self.setReadOnly(True) # Torna somente leitura enquanto espera a resposta
