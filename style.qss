@@ -1,86 +1,23 @@
 /* style.qss */
 
-/* Estilo básico para todos os QWidget */
-QWidget {
-    background-color: #f0f0f0; /* Um cinza claro */
-    color: #333; /* Cor de texto escura */
-    font-family: sans-serif;
-    font-size: 10pt;
-}
-
-/* Estilo para QTreeView (File Explorer) */
+/* Estilo de teste: fundo vermelho para o File Explorer */
 QTreeView {
-    background-color: #ffffff; /* Fundo branco para o explorer */
-    alternate-background-color: #f8f8f8; /* Cor para linhas alternadas */
-    border: 1px solid #cccccc;
-    selection-background-color: #a8d8ff; /* Cor de seleção azul claro */
+    background-color: red; /* MUITO VISÍVEL para testar */
+    border: 2px solid blue;
 }
 
-/* Estilo para QTextEdit (Editor de Código e pode afetar o Chat se não substituído) */
+/* Estilo de teste: fundo verde para o Editor de Código */
 QTextEdit {
-    background-color: #2b2b2b; /* Fundo escuro para o editor */
-    color: #a9b7c6; /* Cor de texto clara */
-    border: 1px solid #555;
-}
-
-/* Estilo para QLineEdit (Entrada no Chat) */
-QLineEdit {
-    background-color: #3c3f41;
-    color: #a9b7c6;
-    border: 1px solid #555;
-    padding: 3px;
-}
-
-/* Estilo para QPushButton */
-QPushButton {
-    background-color: #555;
+    background-color: green; /* MUITO VISÍVEL para testar */
     color: white;
-    border: 1px solid #666;
-    padding: 5px 10px;
-    border-radius: 3px;
+    border: 2px solid yellow;
 }
 
-QPushButton:hover {
-    background-color: #666;
+/* Estilo de teste: fundo azul para a entrada de texto do chat */
+QLineEdit {
+    background-color: blue; /* MUITO VISÍVEL para testar */
+    color: white;
+    border: 2px solid purple;
 }
 
-QPushButton:pressed {
-    background-color: #444;
-}
-
-/* Estilo para QTabWidget */
-QTabWidget::pane {
-    border: 1px solid #cccccc;
-    top: -1px; /* Ajusta a borda para alinhar com as abas */
-}
-
-QTabWidget::tab-bar {
-    left: 5px; /* move the tab bar to the right */
-}
-
-QTabBar::tab {
-    background: #e0e0e0; /* Fundo das abas inativas */
-    border: 1px solid #cccccc;
-    border-bottom-color: #cccccc; /* same as the pane color */
-    border-top-left-radius: 4px;
-    border-top-right-radius: 4px;
-    padding: 2px 8px;
-    margin-right: 2px;
-}
-
-QTabBar::tab:selected, QTabBar::tab:hover {
-    background: #ffffff; /* Fundo das abas ativas ou com hover */
-    border-bottom-color: #ffffff; /* same as the pane color */
-}
-
-QTabBar::tab:selected {
-    border-bottom: none; /* Remove a borda inferior da aba ativa */
-}
-
-/* Estilo para QWebEngineView (Chat History) */
-/* Estilizar QWebEngineView diretamente com QSS pode ser limitado. */
-/* A estilização interna é feita com CSS dentro do HTML. */
-/* Podemos estilizar a "moldura" do widget se necessário. */
-QWebEngineView {
-    border: 1px solid #555;
-}
+/* Mantenha ou remova outros estilos por enquanto */

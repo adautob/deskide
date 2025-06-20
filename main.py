@@ -135,7 +135,7 @@ class IDE(QMainWindow):
          # **Carregar e aplicar Qt Style Sheet**
         try:
             with open('style.qss', 'r', encoding='utf-8') as f:
-                self.setStyleSheet(f.read()) # Aplica o estilo à janela principal (IDE)
+                QApplication.instance().setStyleSheet(f.read()) # <-- Mudança aqui
                 # Ou QApplication.instance().setStyleSheet(f.read()) para aplicar a toda a aplicação
 
             print("Qt Style Sheet 'style.qss' carregado e aplicado.") # Debug print
