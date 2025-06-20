@@ -162,12 +162,17 @@ class AIChatWidget(QWidget):
 
     @pyqtSlot() # Indica que este slot não espera argumentos
     def handle_api_task_finished(self):
-        # Chamado quando a tarefa da API (sucesso ou erro) termina
-        print("Tarefa da API finalizada. Reabilitando UI.") # Debug print
-        self.user_input.setDisabled(False)
-        self.send_button.setDisabled(False)
-        self.user_input.setFocus()
-        self.thinking_status.emit(False) # Indica que a IA terminou de pensar
+        print("--> Início handle_api_task_finished") # Debug print no início
+        try:
+            print("Reabilitando UI: user_input e send_button.") # Debug print
+            self.user_input.setDisabled(False)
+            self.send_button.setDisabled(False)
+            self.user_input.setFocus()
+            self.thinking_status.emit(False)
+            print("UI reabilitada.") # Debug print
+        except Exception as e:
+            print(f"Erro durante reabilitação da UI em handle_api_task_finished: {e}") # Debug print para exceções
+        print("<-- Fim handle_api_task_finished") # Debug print no final
 
 
     @pyqtSlot(bool) # Indica que este slot espera um booleano
