@@ -2,7 +2,8 @@
 
 import sys
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QTextEdit, QLineEdit, QPushButton, QHBoxLayout, QApplication
-from PyQt5.QtCore import Qt, QTimer, Signal # Adicionado QTimer, Signal
+from PyQt5.QtCore import Qt, QTimer # Adicionado QTimer, Signal
+from PyQt5.QtCore import pyqtSignal as Signal
 # Precisaremos importar a biblioteca do Gemini mais tarde
 # import google.generativeai as genai
 
