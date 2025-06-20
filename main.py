@@ -62,13 +62,6 @@ class IDE(QMainWindow):
 
         top_splitter.addWidget(self.file_tree_view) # Adiciona ao splitter superior
 
-        # Tab Widget para os editores
-        self.tab_widget = QTabWidget()
-        self.tab_widget.setTabsClosable(True)
-        self.tab_widget.tabCloseRequested.connect(self.close_tab)
-        self.tab_widget.currentChanged.connect(self.update_title_on_tab_change)
-
-        top_splitter.addWidget(self.tab_widget) # Adiciona ao splitter superior
 
         # **Adicionar o widget de chat de IA como uma nova aba**
         # Passa a chave de API para o widget de chat
