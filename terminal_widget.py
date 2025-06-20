@@ -177,13 +177,24 @@ class CustomTerminalWidget(QPlainTextEdit):
             cursor_position_in_document = cursor.position() # Posição do cursor ANTES do Enter
 
             if event.key() == Qt.Key_Return or event.key() == Qt.Key_Enter:
-                # Extrair apenas o texto digitado pelo usuário
-                # Pegar o texto do documento entre self.command_start_position e cursor_position_in_document
-                # Criar um novo cursor para selecionar a área do comando
-                select_cursor = self.textCursor()
-                select_cursor.setPosition(self.command_start_position)
-                select_cursor.setPosition(cursor_position_in_document, select_cursor.KeepAnchor)
-                command_text = select_cursor.selectedText() # <--- CORREÇÃO FINAL: Selecionar apenas a área do comando
+                # Capturar a linha atual como texto simples
+                cursor.movePosition(cursor_position_in_document)
+                cursor.movePosition(cursor.StartOfLine, cursor.KeepAnchor)
+                current_line_text = cursor.selectedText()
+
+                # Calcular a posição de início do comando relativa ao início da linha
+                command_start_pos_in_line = self.command_start_position - cursor.block().position()
+                # Garante que a posição de início relativa não seja negativa
+                command_start_pos_in_line = max(0, command_start_pos_in_line)
+
+                # Calcular a posição do cursor antes do Enter, relativa à linha
+                cursor_pos_in_line = cursor_position_in_document - cursor.block().position()
+                # Garante que a posição do cursor relativa não seja negativa
+                cursor_pos_in_line = max(0, cursor_pos_in_line)
+
+
+                # **CORREÇÃO FINAL (Tentativa 3):** Fatiar a string da linha atual usando posições relativas
+                command_text = current_line_text[command_start_pos_in_line : cursor_pos_in_line] # <-- Fatiar a string da linha atual
 
 
                 # Remover quebras de linha e espaços em branco do início/fim
@@ -195,11 +206,7 @@ class CustomTerminalWidget(QPlainTextEdit):
 
 
                 # Adicionar a linha digitada com prompt ao display antes de enviar
-                # Capturar a linha atual para exibir no terminal
-                cursor.movePosition(cursor_position_in_document) # Volta o cursor para a posição original
-                cursor.movePosition(cursor.StartOfLine, cursor.KeepAnchor) # Seleciona a linha atual
-                current_line_for_display = cursor.selectedText()
-                self.appendPlainText(current_line_for_display + '\n') # Adicionar a linha digitada (com prompt) ao display visualmente
+                self.appendPlainText(current_line_text + '\n') # Adicionar a linha digitada (com prompt) ao display visualmente
 
 
                 self.send_command(command_text) # Enviar SOMENTE o comando real
