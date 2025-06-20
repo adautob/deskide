@@ -71,6 +71,7 @@ class CustomTerminalWidget(QPlainTextEdit):
          self.command_start_position = self.textCursor().position()
          # Opcional: Enviar um comando inicial como 'cd' para mostrar o diretório atual
          # self.send_command("cd")
+         print(f"after_shell_start: command_start_position definida como {self.command_start_position}") # <-- Debug print
 
 
     # **Slots para ler a saída do QProcess**
@@ -121,6 +122,7 @@ class CustomTerminalWidget(QPlainTextEdit):
          print("Widget definido como editável.") # Debug print
          self.moveCursor(self.textCursor().End)
          self.command_start_position = self.textCursor().position()
+         print(f"handle_output_displayed: command_start_position redefinida como {self.command_start_position}") # <-- Debug print
 
 
     # Slot conectado ao sinal output_received (este slot agora é o principal para adicionar texto)
