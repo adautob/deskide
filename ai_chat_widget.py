@@ -8,6 +8,9 @@ from PyQt5.QtCore import Qt, QTimer, pyqtSignal as Signal, QThread, QObject, pyq
 
 # **Importar a biblioteca do Gemini**
 import google.generativeai as genai
+# Importar o módulo genai.protos para acessar a estrutura do histórico
+import google.generativeai.protos as genai_protos
+
 
 # Classe Worker para chamar a API do Gemini em uma thread separada
 class GeminiWorker(QObject):
@@ -81,15 +84,17 @@ class AIChatWidget(QWidget):
             print("Chave de API do Gemini não fornecida. O chat de IA não estará funcional.")
             self.append_message("Sistema", "Chave de API do Gemini não fornecida. O chat de IA não estará funcional.")
 
+
         # **Compilar a expressão regular para blocos de código e armazenar como variável de instância**
-        self.code_block_pattern = re.compile(r'(?:\w+)?\n(.*?)\n', re.DOTALL) # Regex corrigida
-        
+        # Usado no re.split para manter os delimitadores
+        self.code_delimiter_pattern = re.compile(r'((?:\w+)?\n.*?)', re.DOTALL)
+
+        # Usado para extrair o conteúdo DEPOIS de splitar
+        self.code_content_pattern = re.compile(r'(?:\w+)?\n(.*?)\n', re.DOTALL)
+
 
         self.initUI()
         self.thinking_status.connect(self.update_send_button_status)
-
-        # Conectar o sinal finished do worker ao slot handle_api_task_finished (precisa ser conectado DEPOIS que o worker for criado)
-        # Esta conexão agora é feita dentro de send_message
 
 
     def initUI(self):
@@ -119,144 +124,138 @@ class AIChatWidget(QWidget):
         formatted_message = f"<b>{sender}:</b> "
 
         # Processar a mensagem para formatar blocos de código
-        code_block_pattern = re.compile(r'(?:\w+)?\n(.*?)\n', re.DOTALL)
-        # Usar a variável de instância para a expressão regular
-        last_end = 0
-        parts = []
-
-        for match in self.code_block_pattern.finditer(message): # <-- Usar self.code_block_pattern
-            start, end = match.span()
-            #code_block_full_match = match.group(1) # Não usado diretamente na versão refinada
-            code_content = match.group(1) # O conteúdo dentro do bloco de código (grupo 1 na regex refinada)
+        # Dividir a mensagem pelos delimitadores de bloco de código
+        parts_with_delimiters = re.split(self.code_delimiter_pattern, message)
 
 
-            # Adicionar texto antes do bloco de código (como HTML normal)
-            text_before_code = message[last_end:start]
-            # Substituir quebras de linha por <br> para garantir quebras de linha no HTML
-            parts.append(text_before_code.replace('\n', '<br>'))
+        content_html = ""
+
+        for part in parts_with_delimiters:
+            if not part: # Ignorar partes vazias resultantes do split
+                 continue
+
+            # Verificar se a parte é um bloco de código usando a regex de delimitador
+            # Precisa de um re.match para verificar se a parte INTEIRA é um delimitador
+            if self.code_delimiter_pattern.fullmatch(part):
+                 # Extrair APENAS o conteúdo do código (remover as marcações)
+                 code_content_match = self.code_content_pattern.search(part)
+                 if code_content_match: code_content = code_content_match.group(1)
+                # Formatar o bloco de código
+                import html # Garantir importação
+                escaped_code_content = html.escape(code_content)
+                formatted_code = f"<pre><code style='font-family: \"Courier New\", Consolas, monospace; background-color: #f4f4f4; padding: 5px;'>{escaped_code_content}</code></pre>"
+                content_html += formatted_code
+
+            else:
+                 # Caso inesperado: a parte parecia um delimitador mas a regex de conteúdo não encontrou o conteúdo
+                 content_html += part.replace('\n', '<br>') # Adicionar como texto normal
 
 
-            # Adicionar o bloco de código formatado (usando tags HTML básicas para fonte monoespaçada e pré-formatado)
-            # Escapar caracteres HTML especiais dentro do código (como <, >, &)
-            import html
-            escaped_code_content = html.escape(code_content)
-
-            # Usar <pre> e <code> para pré-formatar e garantir fonte monoespaçada
-            # Estilo para fundo claro e padding
-            formatted_code = f"<pre><code style='font-family: \"Courier New\", Consolas, monospace; background-color: #f4f4f4; padding: 5px;'>{escaped_code_content}</code></pre>"
-            parts.append(formatted_code)
-
-            last_end = end # Atualizar o final da última correspondência
-
-        # Adicionar qualquer texto após o último bloco de código
-        text_after_code = message[last_end:]
-        # Substituir quebras de linha por <br> para garantir quebras de linha no HTML
-        parts.append(text_after_code.replace('\n', '<br>'))
+        else: # Se a parte não é um bloco de código (texto normal)
+            # Adicionar texto normal (substituir quebras de linha por <br>)
+            content_html += part.replace('\n', '<br>')
 
 
-        # Combinar todas as partes
-        content_html = "".join(parts)
-
-        # **Debug print para inspecionar o HTML gerado**
-        print(f"HTML gerado para mensagem de {sender}: {formatted_message + content_html + '<br>'}")
-
-        # Adicionar a mensagem formatada ao histórico (combinando remetente e conteúdo)
-        self.history_display.append(formatted_message + content_html + "<br>") # Adiciona a mensagem completa
-        self.history_display.ensureCursorVisible()
+    # Debug print para inspecionar o HTML gerado (mantenha para verificar a correção)
+    print(f"HTML gerado para mensagem de {sender}: {formatted_message + content_html + '<br>'}")
 
 
-    def send_message(self):
-        if not self.chat_session:
-             self.append_message("Sistema", "Sessão de chat da IA não iniciada. Verifique sua chave de API.")
-             return
-
-        user_text = self.user_input.text().strip()
-        if user_text:
-            self.append_message("Você", user_text)
-            self.user_input.clear()
-            self.user_input.setDisabled(True)
-            self.send_button.setDisabled(True)
-            self.thinking_status.emit(True)
-
-            # **Criar Worker e Thread para chamar a API**
-            self.thread = QThread()
-            self.worker = GeminiWorker(self.chat_session, user_text)
-            self.worker.moveToThread(self.thread)
-
-            # Conectar sinais do worker e da thread
-            self.thread.started.connect(self.worker.run)
-            self.worker.finished.connect(self.thread.quit)
-            self.worker.finished.connect(self.worker.deleteLater)
-            self.thread.finished.connect(self.thread.deleteLater)
-
-            # Conectar o sinal finished do worker ao slot handle_api_task_finished para reabilitar a UI
-            self.worker.finished.connect(self.handle_api_task_finished)
+    # Adicionar a mensagem formatada ao histórico
+    self.history_display.append(formatted_message + content_html + "<br>")
+    self.history_display.ensureCursorVisible()
 
 
-            # Conectar sinais de resposta/erro do worker aos slots no widget principal
-            self.worker.response_ready.connect(self.receive_ai_response)
-            self.worker.error.connect(self.handle_ai_error)
+def send_message(self):
+    if not self.chat_session:
+         self.append_message("Sistema", "Sessão de chat da IA não iniciada. Verifique sua chave de API.")
+         return
 
-            self.thread.start()
+    user_text = self.user_input.text().strip()
+    if user_text:
+        self.append_message("Você", user_text)
+        self.user_input.clear()
+        self.user_input.setDisabled(True)
+        self.send_button.setDisabled(True)
+        self.thinking_status.emit(True)
 
-            print(f"Mensagem do usuário enviada para processamento da API (via Worker).")
+        # **Criar Worker e Thread para chamar a API**
+        self.thread = QThread()
+        self.worker = GeminiWorker(self.chat_session, user_text)
+        self.worker.moveToThread(self.thread)
 
+        # Conectar sinais do worker e da thread
+        self.thread.started.connect(self.worker.run)
+        self.worker.finished.connect(self.thread.quit)
+        self.worker.finished.connect(self.worker.deleteLater)
+        self.thread.finished.connect(self.thread.deleteLater)
 
-    @pyqtSlot(str)
-    def receive_ai_response(self, ai_text):
-        print(f"Recebendo resposta da IA: {ai_text}")
-        # append_message agora lida com a formatação
-        self.append_message("IA", ai_text)
-        # Reabilitação da UI agora é agendada em handle_api_task_finished
-
-
-    @pyqtSlot(str)
-    def handle_ai_error(self, error_message):
-        print(f"Erro da API da IA: {error_message}")
-        self.append_message("Sistema", f"Erro na comunicação com a IA: {error_message}")
-        # Reabilitação da UI agora é agendada em handle_api_task_finished
-
-
-    @pyqtSlot()
-    def handle_api_task_finished(self):
-        print("--> Início handle_api_task_finished")
-        try:
-            print("Agendando reabilitação da UI com QTimer.singleShot(0).")
-            # **Agendar a reabilitação da UI na próxima iteração do loop de eventos**
-            QTimer.singleShot(0, self._re_enable_ui)
-
-        except Exception as e:
-            print(f"Erro durante agendamento da reabilitação da UI: {e}")
-        print("<-- Fim handle_api_task_finished")
+        # Conectar o sinal finished do worker ao slot handle_api_task_finished para reabilitar a UI
+        self.worker.finished.connect(self.handle_api_task_finished)
 
 
-    @pyqtSlot() # Novo slot para a reabilitação da UI agendada
-    def _re_enable_ui(self):
-         print("--> Início _re_enable_ui")
-         try:
-             print("Executando reabilitação da UI: user_input e send_button.")
-             self.user_input.setDisabled(False)
-             self.send_button.setDisabled(False)
-             self.user_input.setFocus()
-             self.thinking_status.emit(False)
-             print("UI reabilitada com sucesso em _re_enable_ui.")
-         except Exception as e:
-             print(f"Erro durante execução da reabilitação da UI em _re_enable_ui: {e}")
-         print("<-- Fim _re_enable_ui")
+        # Conectar sinais de resposta/erro do worker aos slots no widget principal
+        self.worker.response_ready.connect(self.receive_ai_response)
+        self.worker.error.connect(self.handle_ai_error)
+
+        self.thread.start()
+
+        print(f"Mensagem do usuário enviada para processamento da API (via Worker).")
 
 
-    @pyqtSlot(bool)
-    def update_send_button_status(self, thinking):
-        if thinking:
-            self.send_button.setText("Pensando...")
-            self.send_button.setDisabled(True)
-            self.user_input.setDisabled(True)
-        else:
-            self.send_button.setText("Enviar")
-            self.send_button.setDisabled(False)
-            self.user_input.setDisabled(False)
-            # self.user_input.setFocus() # Não definir foco aqui, pois pode interferir com outras ações
+@pyqtSlot(str)
+def receive_ai_response(self, ai_text):
+    print(f"Recebendo resposta da IA: {ai_text}")
+    # append_message agora lida com a formatação
+    self.append_message("IA", ai_text)
+    # Reabilitação da UI agora é agendada em handle_api_task_finished
 
+
+@pyqtSlot(str)
+def handle_ai_error(self, error_message):
+    print(f"Erro da API da IA: {error_message}")
+    self.append_message("Sistema", f"Erro na comunicação com a IA: {error_message}")
+    # Reabilitação da UI agora é agendada em handle_api_task_finished
+
+
+@pyqtSlot()
+def handle_api_task_finished(self):
+    print("--> Início handle_api_task_finished")
+    try:
+        print("Agendando reabilitação da UI com QTimer.singleShot(0).")
+        # **Agendar a reabilitação da UI na próxima iteração do loop de eventos**
+        QTimer.singleShot(0, self._re_enable_ui)
+
+    except Exception as e:
+        print(f"Erro durante agendamento da reabilitação da UI: {e}")
+    print("<-- Fim handle_api_task_finished")
+
+
+@pyqtSlot() # Novo slot para a reabilitação da UI agendada
+def _re_enable_ui(self):
+     print("--> Início _re_enable_ui")
+     try:
+         print("Executando reabilitação da UI: user_input e send_button.")
+         self.user_input.setDisabled(False)
+         self.send_button.setDisabled(False)
+         self.user_input.setFocus()
+         self.thinking_status.emit(False)
+         print("UI reabilitada com sucesso em _re_enable_ui.")
+     except Exception as e:
+         print(f"Erro durante execução da reabilitação da UI em _re_enable_ui: {e}")
+     print("<-- Fim _re_enable_ui")
+
+
+@pyqtSlot(bool)
+def update_send_button_status(self, thinking):
+    if thinking:
+        self.send_button.setText("Pensando...")
+        self.send_button.setDisabled(True)
+        self.user_input.setDisabled(True)
+    else:
+        self.send_button.setText("Enviar")
+        self.send_button.setDisabled(False)
+        self.user_input.setDisabled(False)
+        # self.user_input.setFocus() # Não definir foco aqui, pois pode interferir com outras ações
 
 # Exemplo básico de uso (para teste individual do widget)
 if __name__ == '__main__':
@@ -274,3 +273,4 @@ if __name__ == '__main__':
     chat_widget.resize(400, 600)
     chat_widget.show()
     sys.exit(app.exec_())
+
