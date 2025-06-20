@@ -10,10 +10,18 @@ import re
 from editor import CodeEditor
 from terminal_widget import CustomTerminalWidget
 
+# **Importar o widget de chat de IA**
+from ai_chat_widget import AIChatWidget
+
 
 class IDE(QMainWindow):
     def __init__(self):
         super().__init__()
+
+        # **Definir sua chave de API do Gemini aqui (use um método seguro para gerenciar chaves em produção)**
+        # Por enquanto, use um placeholder ou leia de uma variável de ambiente/arquivo de configuração
+        self.gemini_api_key = "AIzaSyBZl62T-QP2U8aVtvcWY5k8Y2Dv4veeZeQ" # SUBSTITUA PELA SUA CHAVE REAL OU MÉTODO SEGURO
+
 
         self.initUI()
 
@@ -61,6 +69,15 @@ class IDE(QMainWindow):
         self.tab_widget.currentChanged.connect(self.update_title_on_tab_change)
 
         top_splitter.addWidget(self.tab_widget) # Adiciona ao splitter superior
+
+        # **Adicionar o widget de chat de IA como uma nova aba**
+        # Passa a chave de API para o widget de chat
+        self.ai_chat_widget = AIChatWidget(api_key=self.gemini_api_key)
+        self.main_tab_widget.addTab(self.ai_chat_widget, "Chat de IA")
+
+        # Os CodeEditors (editores de código) serão adicionados como outras abas
+        # quando novos arquivos forem criados ou abertos.
+        # O método new_file e open_file precisarão usar self.main_tab_widget para adicionar abas.
 
 
         # Define a proporção inicial do splitter superior
@@ -111,9 +128,17 @@ class IDE(QMainWindow):
         self.show()
         top_bottom_splitter.addWidget(self.terminal_widget) # Adiciona o terminal ao splitter principal
 
-    # Método auxiliar para obter o editor da aba ativa
+    # Método auxiliar para obter o widget da aba ativa (pode ser um CodeEditor ou o AIChatWidget)
+    # Precisará verificar o tipo do widget
+    def current_active_widget(self):
+        return self.main_tab_widget.currentWidget()
+
+    # Método auxiliar para obter o editor da aba ativa (retorna None se a aba ativa não for um CodeEditor)
     def current_editor(self):
-        return self.tab_widget.currentWidget()
+        active_widget = self.current_active_widget()
+        if isinstance(active_widget, CodeEditor):
+             return active_widget
+        return None # Retorna None se a aba ativa não é um CodeEditor
 
 
     def new_file(self):
