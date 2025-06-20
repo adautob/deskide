@@ -75,14 +75,18 @@ class CustomTerminalWidget(QPlainTextEdit):
     # **Slots para ler a saída do QProcess**
     def read_standard_output(self):
         data = self.process.readAllStandardOutput()
-        text = bytes(data).decode(QTextCodec.codecForLocale().name()) # Não usar strip() aqui para manter quebras de linha
+        # **Converter o nome da codificação para string**
+        codec_name = bytes(QTextCodec.codecForLocale().name().data()).decode('ascii')
+        text = bytes(data).decode(codec_name) # Usar o nome da codificação como string
         if text:
             print(f"Saída Standard recebida (QProcess): {repr(text)}") # Debug print com repr()
             self.appendPlainText(text) # appendPlainText agora lida com a detecção de fim de comando
 
     def read_standard_error(self):
         data = self.process.readAllStandardError()
-        text = bytes(data).decode(QTextCodec.codecForLocale().name()) # Não usar strip() aqui
+        # **Converter o nome da codificação para string**
+        codec_name = bytes(QTextCodec.codecForLocale().name().data()).decode('ascii')
+        text = bytes(data).decode(codec_name)
         if text:
             print(f"Saída de Erro Standard recebida (QProcess): {repr(text)}") # Debug print com repr()
             self.appendPlainText(text) # appendPlainText agora lida com a detecção de fim de comando
@@ -148,7 +152,7 @@ class CustomTerminalWidget(QPlainTextEdit):
                 self.appendPlainText(f"Erro ao enviar comando: {e}\n")
                 self.setReadOnly(False)
                 self.moveCursor(self.textCursor().End)
-                self.command_start_position = self.textCursor().position()
+                self.command_start_position = self.textCursor().position() # Redefinir posição de início
 
         else:
             print("send_command (QProcess): Processo não rodando ou não disponível.") # Debug print
