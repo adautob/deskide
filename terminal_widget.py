@@ -187,21 +187,34 @@ class CustomTerminalWidget(QPlainTextEdit):
                 print(f"keyPressEvent (Enter): self.command_start_position = {self.command_start_position}")
                 print(f"keyPressEvent (Enter): cursor_position_in_document (before Enter) = {cursor_position_in_document}")                
                 
+                # Calcular a posição de início do comando relativa ao início da linha
+                command_start_pos_in_line = self.command_start_position - cursor.block().position()
+                # Garante que a posição de início relativa não seja negativa
+                command_start_pos_in_line = max(0, command_start_pos_in_line)
+
                 # Calcular o texto digitado pelo usuário
-                # Pegar a parte da string que começa DEPOIS de command_start_position até a posição atual do cursor
-                # NOTA: self.command_start_position é a posição no documento
-                # cursor_position_in_document é a posição no documento antes do Enter
-                command_text = full_line_text[self.command_start_position:] # <--- CORREÇÃO: Pegar texto a partir da posição inicial do comando
+                # Fatiar full_line_text a partir da posição de início relativa até a posição do cursor antes do Enter, também relativa à linha.
+                cursor_pos_in_line = cursor_position_in_document - cursor.block().position()
+                # Garante que a posição do cursor relativa não seja negativa
+                cursor_pos_in_line = max(0, cursor_pos_in_line)
+
+
+                # **CORREÇÃO:** Fatiar full_line_text usando posições RELATIVAS à linha
+                command_text = full_line_text[command_start_pos_in_line : cursor_pos_in_line] # <-- Usar fatiamento com posições relativas
 
                 # Remover quebras de linha e espaços em branco do início/fim
                 command_text = command_text.strip()
 
+                # **Debug print para inspecionar command_text ANTES de enviar**
+                print(f"keyPressEvent (Enter): Extracted command_text (before strip) = {repr(command_text)}")
+                print(f"keyPressEvent (Enter): Extracted command_text (after strip) = {repr(command_text.strip())}")
+
 
                 # Adicionar a linha digitada com prompt ao display antes de enviar
-                #appendPlainText já lida com a exibição e a heurística de fim de comando
-                self.appendPlainText(command_text + '\n') # Adicionar a linha digitada ao display
+                self.appendPlainText(full_line_text[ : cursor_pos_in_line] + '\n') # Adicionar a linha digitada (sem o prompt final) ao display
 
-                self.send_command(command_text) # <--- Enviar SOMENTE o comando real
+
+                self.send_command(command_text) # Enviar SOMENTE o comando real
 
                 # Resetar a posição de início do comando APÓS enviar (será ajustado por handle_output_displayed)
                 # self.command_start_position = self.textCursor().position() # Não resetar aqui, handle_output_displayed fará isso
