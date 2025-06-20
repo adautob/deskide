@@ -83,6 +83,7 @@ class IDE(QMainWindow):
         file_menu.addAction(open_file_action)
 
         save_action = QAction('&Salvar', self)
+        save_action.triggered.connect(self.save_file) # Esta linha conecta a ação ao método
         save_action.setShortcut('Ctrl+S')
         file_menu.addAction(save_action)
 
@@ -206,6 +207,16 @@ class IDE(QMainWindow):
                 # Opcional: Marcar a aba como não modificada (precisaria de uma flag de modificação no editor)
                 # self.tab_widget.setTabText(self.tab_widget.currentIndex(), QFileInfo(current_editor.current_file_path).fileName())
 
+                # **Atualizar o File Explorer (sem mudar a raiz)**
+                # Tentar selecionar o arquivo salvo na árvore, se ele já estiver visível
+                index_in_explorer = self.file_system_model.index(current_editor.current_file_path)
+                if index_in_explorer.isValid():
+                     self.file_tree_view.setCurrentIndex(index_in_explorer)
+                     # Opcional: Expandir o diretório pai para garantir que o arquivo esteja visível
+                     self.file_tree_view.expand(index_in_explorer.parent())
+                     # Não redefinir self.current_folder_path aqui, a menos que a raiz do explorer mude
+
+
             except Exception as e:
                 print(f"Erro ao salvar o arquivo: {e}")
         else:
@@ -245,7 +256,7 @@ class IDE(QMainWindow):
                     # Como não estamos mais criando o arquivo físico em new_file, essa lógica de exclusão complexa
                     # para arquivos "sem título" criados via "Novo" se torna mais simples ou desnecessária aqui.
                     # Se um arquivo foi aberto (e não era "sem título"), o if acima lida com ele.
-                    # Se é um novo arquivo ("sem título", current_file_path is None), não há arquivo físico a ser excluído antes do primeiro salvamento.
+                    # Se é um novo arquivo ("sem título", current_editor.current_file_path is None), não há arquivo físico a ser excluído antes do primeiro salvamento.
 
 
                     with open(file_path, 'w', encoding='utf-8') as f:
@@ -256,12 +267,12 @@ class IDE(QMainWindow):
                     self.setWindowTitle(f'Minha IDE Simples - {file_name_saved}') # Atualiza o título da janela principal
                     self.tab_widget.setTabText(self.tab_widget.currentIndex(), file_name_saved) # Atualiza o título da aba
                     print(f"Arquivo salvo: {file_path}")
-                    # Atualizar o File Explorer pode ser necessário para refletir o novo arquivo
-                    # Define a raiz do modelo e da view para a pasta onde o arquivo foi salvo
-                    saved_file_dir = QFileInfo(file_path).dir().absolutePath()
-                    self.file_system_model.setRootPath(saved_file_dir)
-                    self.file_tree_view.setRootIndex(self.file_system_model.index(saved_file_dir))
-                    self.current_folder_path = saved_file_dir # Atualiza a pasta atual do explorer
+                    # Atualizar o File Explorer (sem mudar a raiz)
+                    index_in_explorer = self.file_system_model.index(file_path)
+                    if index_in_explorer.isValid():
+                         self.file_tree_view.setCurrentIndex(index_in_explorer)
+                         self.file_tree_view.expand(index_in_explorer.parent())
+                         # Não redefinir self.current_folder_path aqui
 
 
                 except Exception as e:
@@ -299,10 +310,31 @@ class IDE(QMainWindow):
                 # **Exclusão do arquivo original para "Salvar como"**
                 # Se o arquivo original NÃO era um arquivo "sem título" e o caminho de salvamento é diferente,
                 # NÃO devemos excluir o arquivo original (comportamento padrão de "Salvar como").
-                # Se o arquivo original ERA um arquivo "sem título" e o caminho de salvamento é diferente,
-                # TAMBÉM NÃO há arquivo físico "sem título" para excluir (com a nova lógica de "Novo").
-                # A lógica de exclusão complexa que tínhamos era para o caso onde "Novo" criava um arquivo físico.
-                # Com a nova estrutura de abas, a lógica de exclusão para "sem título" é mais simples/desnecessária aqui.
+                # Se o arquivo original ERA um arquivo "sem título" (com o nome sem tituloX.txt que foi criado fisicamente)
+                # e o caminho de salvamento é diferente, precisamos EXCLUIR o arquivo sem título original.
+                # Com a nova lógica de "Novo", um arquivo sem título só tem um caminho físico depois do primeiro "Salvar como".
+                # Então, se current_editor.current_file_path NÃO é None ANTES de salvar como
+                # E o nome do arquivo original corresponde ao padrão "sem titulo"
+                # E o novo file_path é diferente do original
+                # Então excluímos o original.
+
+                original_file_path = current_editor.current_file_path # Caminho original antes do salvamento
+                is_original_untitled = False
+                if original_file_path:
+                     file_info = QFileInfo(original_file_path)
+                     file_name = file_info.fileName()
+                     # import re # Já importado no topo
+                     pattern = r"^sem titulo(\s\d+)?\.txt$"
+                     if re.match(pattern, file_name):
+                         is_original_untitled = True
+
+
+                if is_original_untitled and original_file_path and file_path != original_file_path and os.path.exists(original_file_path):
+                     try:
+                         os.remove(original_file_path)
+                         print(f"Arquivo antigo 'sem título' excluído: {original_file_path}")
+                     except Exception as e:
+                         print(f"Erro ao excluir arquivo antigo 'sem título': {e}")
 
 
                 with open(file_path, 'w', encoding='utf-8') as f:
@@ -313,11 +345,12 @@ class IDE(QMainWindow):
                 self.setWindowTitle(f'Minha IDE Simples - {file_name_saved}') # Atualiza o título da janela principal
                 self.tab_widget.setTabText(self.tab_widget.currentIndex(), file_name_saved) # Atualiza o título da aba
                 print(f"Arquivo salvo como: {file_path}")
-                 # Atualizar o File Explorer para refletir o novo arquivo/caminho
-                saved_file_dir = QFileInfo(file_path).dir().absolutePath()
-                self.file_system_model.setRootPath(saved_file_dir)
-                self.file_tree_view.setRootIndex(self.file_system_model.index(saved_file_dir))
-                self.current_folder_path = saved_file_dir # Atualiza a pasta atual do explorer
+                 # Atualizar o File Explorer (sem mudar a raiz)
+                index_in_explorer = self.file_system_model.index(file_path)
+                if index_in_explorer.isValid():
+                     self.file_tree_view.setCurrentIndex(index_in_explorer)
+                     self.file_tree_view.expand(index_in_explorer.parent())
+                     # Não redefinir self.current_folder_path aqui
 
 
             except Exception as e:
