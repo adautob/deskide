@@ -16,9 +16,55 @@ import google.generativeai as genai
 import google.generativeai.protos as genai_protos
 
 
+# No arquivo ai_chat_widget.py, no início do arquivo:
+
 # Classe Worker para chamar a API do Gemini em uma thread separada
-#class GeminiWorker(QObject):
-    # ... (código da classe GeminiWorker) ...
+class GeminiWorker(QObject):
+    # Sinais para comunicar com a thread principal
+    finished = Signal() # Sinal emitido quando a tarefa termina
+    response_ready = Signal(str) # Sinal emitido quando a resposta da IA está pronta
+    error = Signal(str) # Sinal emitido em caso de erro
+
+    def __init__(self, chat_session, user_message):
+        super().__init__()
+        self.chat_session = chat_session
+        self.user_message = user_message
+
+    @pyqtSlot() # Decorador para indicar que este método é um slot (será chamado na thread)
+    def run(self):
+        """Executa a chamada para a API do Gemini."""
+        try:
+            print(f"Worker: Enviando mensagem para a API: {self.user_message}") # Debug print
+            # Enviar a mensagem do usuário para a sessão de chat do Gemini
+            response = self.chat_session.send_message(self.user_message)
+            print(f"Worker: Resposta da API recebida: {response}") # Debug print
+
+            # Extrair o texto da resposta
+            ai_text = ""
+            try:
+                # Tenta obter o texto diretamente. Lida com ContentEmpty ou outros erros.
+                if response and hasattr(response, 'text'):
+                    ai_text = response.text
+                else:
+                     ai_text = f"Resposta da IA não contém texto (ou está vazia): {response}"
+
+            except Exception as e:
+                ai_text = f"Erro ao extrair texto da resposta da IA: {e}\nResposta completa: {response}"
+
+
+            print(f"Worker: Texto da IA extraído: {ai_text}") # Debug print
+            self.response_ready.emit(ai_text) # Emite o sinal com a resposta
+
+        except Exception as e:
+            print(f"Worker: Erro na chamada da API: {e}") # Debug print
+            self.error.emit(f"Erro na comunicação com a IA: {e}") # Emite o sinal de erro
+
+        finally:
+            print("Worker: Tarefa finalizada.") # Debug print
+            self.finished.emit() # Emite o sinal de finalização
+
+# ... restante do código, incluindo a classe AIChatWidget ...
+
 
 
 class AIChatWidget(QWidget):
