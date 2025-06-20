@@ -7,6 +7,7 @@ from PyQt5.QtCore import QProcess, QTextCodec, QByteArray, QIODevice, QTimer, Qt
 from PyQt5.QtCore import pyqtSignal as Signal # Importação corrigida
 import threading
 import os
+import locale # Importar o módulo locale
 
 class CustomTerminalWidget(QPlainTextEdit):
     # Não precisamos mais do sinal output_received com QProcess, mas mantido se a abordagem subprocess for usada
@@ -75,21 +76,37 @@ class CustomTerminalWidget(QPlainTextEdit):
     # **Slots para ler a saída do QProcess**
     def read_standard_output(self):
         data = self.process.readAllStandardOutput()
-        # **Converter o nome da codificação para string**
-        codec_name = bytes(QTextCodec.codecForLocale().name().data()).decode('ascii')
-        text = bytes(data).decode(codec_name) # Usar o nome da codificação como string
-        if text:
-            print(f"Saída Standard recebida (QProcess): {repr(text)}") # Debug print com repr()
-            self.appendPlainText(text) # appendPlainText agora lida com a detecção de fim de comando
+        try:
+            # **Usar a codificação preferencial do sistema para decodificar**
+            system_encoding = locale.getpreferredencoding(False)
+            text = bytes(data).decode(system_encoding) # Usar a codificação do sistema
+
+            if text:
+                print(f"Saída Standard recebida (QProcess): {repr(text)}") # Debug print com repr()
+                self.appendPlainText(text) # appendPlainText agora lida com a detecção de fim de comando
+
+        except Exception as e:
+            print(f"Erro ao decodificar saída standard: {e}")
+            # Em caso de erro de decodificação, tentar decodificar como bytes brutos ou com outra codificação
+            self.appendPlainText(f"\nErro de decodificação na saída standard: {e}\n")
+            self.appendPlainText(repr(bytes(data)) + '\n') # Exibir os bytes brutos para depuração
+
 
     def read_standard_error(self):
         data = self.process.readAllStandardError()
-        # **Converter o nome da codificação para string**
-        codec_name = bytes(QTextCodec.codecForLocale().name().data()).decode('ascii')
-        text = bytes(data).decode(codec_name)
-        if text:
-            print(f"Saída de Erro Standard recebida (QProcess): {repr(text)}") # Debug print com repr()
-            self.appendPlainText(text) # appendPlainText agora lida com a detecção de fim de comando
+        try:
+            # **Usar a codificação preferencial do sistema para decodificar**
+            system_encoding = locale.getpreferredencoding(False)
+            text = bytes(data).decode(system_encoding)
+
+            if text:
+                print(f"Saída de Erro Standard recebida (QProcess): {repr(text)}") # Debug print com repr()
+                self.appendPlainText(text) # appendPlainText agora lida com a detecção de fim de comando
+
+        except Exception as e:
+            print(f"Erro ao decodificar saída de erro standard: {e}")
+            self.appendPlainText(f"\nErro de decodificação na saída de erro standard: {e}\n")
+            self.appendPlainText(repr(bytes(data)) + '\n') # Exibir os bytes brutos para depuração
 
 
     def process_finished(self, exit_code, exit_status):
@@ -141,7 +158,7 @@ class CustomTerminalWidget(QPlainTextEdit):
                 print(f"Enviando comando para QProcess: {command}") # Debug print
                 # Adiciona a linha digitada e uma nova linha visualmente antes de enviar
                 # appendPlainText já lida com a exibição e a heurística de fim de comando
-                self.process.write((command + '\n').encode(QTextCodec.codecForLocale().name())) # Envia como bytes
+                self.process.write((command + '\n').encode(locale.getpreferredencoding(False))) # Envia como bytes usando a codificação do sistema
                 # self.process.waitForBytesWritten() # Evitar ao máximo para não bloquear a UI
                 self.setReadOnly(True) # Torna somente leitura enquanto espera a resposta
                 print("Widget definido como somente leitura (enviando comando).") # Debug print
