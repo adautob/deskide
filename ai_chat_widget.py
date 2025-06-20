@@ -137,23 +137,23 @@ class AIChatWidget(QWidget):
             # Verificar se a parte é um bloco de código usando a regex de delimitador
             # Precisa de um re.match para verificar se a parte INTEIRA é um delimitador
             if self.code_delimiter_pattern.fullmatch(part):
-                 # Extrair APENAS o conteúdo do código (remover as marcações)
-                 code_content_match = self.code_content_pattern.search(part)
-                 if code_content_match: code_content = code_content_match.group(1)
-                # Formatar o bloco de código
-                import html # Garantir importação
-                escaped_code_content = html.escape(code_content)
-                formatted_code = f"<pre><code style='font-family: \"Courier New\", Consolas, monospace; background-color: #f4f4f4; padding: 5px;'>{escaped_code_content}</code></pre>"
-                content_html += formatted_code
+                # Extrair APENAS o conteúdo do código (remover as marcações)
+                code_content_match = self.code_content_pattern.search(part)
+                if code_content_match: code_content = code_content_match.group(1)
+                    # Formatar o bloco de código
+                    import html # Garantir importação
+                    escaped_code_content = html.escape(code_content)
+                    formatted_code = f"<pre><code style='font-family: \"Courier New\", Consolas, monospace; background-color: #f4f4f4; padding: 5px;'>{escaped_code_content}</code></pre>"
+                    content_html += formatted_code
 
-            else:
-                 # Caso inesperado: a parte parecia um delimitador mas a regex de conteúdo não encontrou o conteúdo
-                 content_html += part.replace('\n', '<br>') # Adicionar como texto normal
+                else:
+                     # Caso inesperado: a parte parecia um delimitador mas a regex de conteúdo não encontrou o conteúdo
+                    content_html += part.replace('\n', '<br>') # Adicionar como texto normal
 
 
-        else: # Se a parte não é um bloco de código (texto normal)
-            # Adicionar texto normal (substituir quebras de linha por <br>)
-            content_html += part.replace('\n', '<br>')
+            else: # Se a parte não é um bloco de código (texto normal)
+                # Adicionar texto normal (substituir quebras de linha por <br>)
+                content_html += part.replace('\n', '<br>')
 
 
     # Debug print para inspecionar o HTML gerado (mantenha para verificar a correção)
