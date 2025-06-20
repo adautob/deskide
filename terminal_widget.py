@@ -190,22 +190,26 @@ class CustomTerminalWidget(QPlainTextEdit):
                 print(f"keyPressEvent (Enter): cursor.block().position() = {cursor.block().position()}")
 
 
-                # Calcular a posição de início do comando relativa ao início da linha
-                command_start_pos_in_line = self.command_start_position - cursor.block().position()
-                # Garante que a posição de início relativa não seja negativa
-                command_start_pos_in_line = max(0, command_start_pos_in_line)
+                # **CORREÇÃO FINAL (Tentativa 4):** Encontrar a posição do prompt na linha atual e fatiar a partir daí.
+                prompt_end_index = current_line_text.rfind('>') # Encontra o último '>' (heurística para prompt do CMD)
+                if prompt_end_index != -1:
+                    # Adiciona 2 para pular o "> "
+                    command_start_pos_in_line = prompt_end_index + 2
+                else:
+                    # Caso o prompt não seja encontrado (inesperado, mas seguro)
+                    command_start_pos_in_line = 0 # Começa do início da linha
 
                 # Calcular a posição do cursor antes do Enter, relativa à linha
                 cursor_pos_in_line = cursor_position_in_document - cursor.block().position()
                 # Garante que a posição do cursor relativa não seja negativa
                 cursor_pos_in_line = max(0, cursor_pos_in_line)
 
-                # **Debug prints para inspecionar posições relativas**
-                print(f"keyPressEvent (Enter): command_start_pos_in_line = {command_start_pos_in_line}")
+                # **Debug prints para inspecionar posições relativas (com a nova lógica)**
+                print(f"keyPressEvent (Enter): command_start_pos_in_line (after prompt find) = {command_start_pos_in_line}")
                 print(f"keyPressEvent (Enter): cursor_pos_in_line = {cursor_pos_in_line}")
 
 
-                # CORREÇÃO FINAL (Tentativa 3): Fatiar a string da linha atual usando posições relativas
+                # Fatiar a string da linha atual usando posições relativas
                 command_text = current_line_text[command_start_pos_in_line : cursor_pos_in_line]
 
 
