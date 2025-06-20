@@ -185,8 +185,8 @@ class IDE(QMainWindow):
         # Criar um novo editor e adicioná-lo como uma nova aba
         editor = CodeEditor() # Cria uma nova instância de CodeEditor
         # editor.current_file_path já é inicializado como None em CodeEditor.__init__
-        self.tab_widget.addTab(editor, "Sem Título") # Adiciona uma nova aba com o editor e título "Sem Título"
-        self.tab_widget.setCurrentWidget(editor) # Define a nova aba como ativa
+        self.main_tab_widget.addTab(editor, "Sem Título") # Adiciona uma nova aba com o editor e título "Sem Título"
+        self.main_tab_widget.setCurrentWidget(editor) # Define a nova aba como ativa
 
         # O arquivo físico sem título não é mais criado aqui.
         # O salvamento inicial será tratado quando o usuário salvar pela primeira vez.
@@ -202,10 +202,10 @@ class IDE(QMainWindow):
         if file_path:
             try:
                 # Verificar se o arquivo já está aberto em uma aba
-                for i in range(self.tab_widget.count()):
+                for i in range(self.main_tab_widget.count()):
                      # Precisa verificar o current_file_path de cada widget (CodeEditor)
-                     if hasattr(self.tab_widget.widget(i), 'current_file_path') and self.tab_widget.widget(i).current_file_path == file_path:
-                         self.tab_widget.setCurrentIndex(i) # Ativa a aba existente
+                     if hasattr(self.main_tab_widget.widget(i), 'current_file_path') and self.tab_widget.widget(i).current_file_path == file_path:
+                         self.main_tab_widget.setCurrentIndex(i) # Ativa a aba existente
                          print(f"Arquivo já aberto em aba: {file_path}")
                          return # Sai do método se o arquivo já está aberto
 
@@ -217,8 +217,8 @@ class IDE(QMainWindow):
                     editor.current_file_path = file_path # Define o caminho do arquivo para este editor
 
                     file_name = QFileInfo(file_path).fileName()
-                    self.tab_widget.addTab(editor, file_name) # Adiciona nova aba com o nome do arquivo
-                    self.tab_widget.setCurrentWidget(editor) # Define a nova aba como ativa
+                    self.main_tab_widget.addTab(editor, file_name) # Adiciona nova aba com o nome do arquivo
+                    self.main_tab_widget.setCurrentWidget(editor) # Define a nova aba como ativa
 
                     self.setWindowTitle(f'Minha IDE Simples - {file_name}') # Atualiza o título da janela
                     print(f"Arquivo aberto em nova aba: {file_path}")
@@ -339,7 +339,7 @@ class IDE(QMainWindow):
                     current_editor.current_file_path = file_path # Atualiza o caminho NO EDITOR ATIVO
                     file_name_saved = QFileInfo(file_path).fileName()
                     self.setWindowTitle(f'Minha IDE Simples - {file_name_saved}') # Atualiza o título da janela principal
-                    self.tab_widget.setTabText(self.tab_widget.currentIndex(), file_name_saved) # Atualiza o título da aba
+                    self.main_tab_widget.setTabText(self.main_tab_widget.currentIndex(), file_name_saved) # Atualiza o título da aba
                     print(f"Arquivo salvo: {file_path}")
                     # Atualizar o File Explorer (sem mudar a raiz)
                     index_in_explorer = self.file_system_model.index(file_path)
@@ -417,7 +417,7 @@ class IDE(QMainWindow):
                 current_editor.current_file_path = file_path # Atualiza o caminho do arquivo atual para o novo NO EDITOR ATIVO
                 file_name_saved = QFileInfo(file_path).fileName()
                 self.setWindowTitle(f'Minha IDE Simples - {file_name_saved}') # Atualiza o título da janela principal
-                self.tab_widget.setTabText(self.tab_widget.currentIndex(), file_name_saved) # Atualiza o título da aba
+                self.main_tab_widget.setTabText(self.main_tab_widget.currentIndex(), file_name_saved) # Atualiza o título da aba
                 print(f"Arquivo salvo como: {file_path}")
                  # Atualizar o File Explorer (sem mudar a raiz)
                 index_in_explorer = self.file_system_model.index(file_path)
@@ -444,11 +444,11 @@ class IDE(QMainWindow):
 
             # **Limpar todas as abas ao abrir uma nova pasta**
             # Você pode querer perguntar ao usuário se deseja salvar antes de fechar abas modificadas
-            while self.tab_widget.count() > 0:
+            while self.main_'tab_widget.count() > 0:
                  # Implementar lógica de "Salvar antes de fechar" aqui, se necessário
-                 widget_to_close = self.tab_widget.widget(0)
+                 widget_to_close = self.main_tab_widget.widget(0)
                  widget_to_close.deleteLater()
-                 self.tab_widget.removeTab(0)
+                 self.main_tab_widget.removeTab(0)
 
             self.setWindowTitle('Minha IDE Simples - Sem Título')
             # current_file_path é por editor, então não precisa resetar self.current_file_path aqui.
@@ -464,9 +464,9 @@ class IDE(QMainWindow):
         # **Usar a mesma lógica de open_file para abrir em abas**
         try:
             # Verificar se o arquivo já está aberto em uma aba
-            for i in range(self.tab_widget.count()):
-                 if hasattr(self.tab_widget.widget(i), 'current_file_path') and self.tab_widget.widget(i).current_file_path == file_path:
-                     self.tab_widget.setCurrentIndex(i) # Ativa a aba existente
+            for i in range(self.main_tab_widget.count()):
+                 if hasattr(self.main_tab_widget.widget(i), 'current_file_path') and self.tab_widget.widget(i).current_file_path == file_path:
+                     self.main_tab_widget.setCurrentIndex(i) # Ativa a aba existente
                      print(f"Arquivo já aberto em aba: {file_path}")
                      return # Sai do método se o arquivo já está aberto
 
@@ -478,8 +478,8 @@ class IDE(QMainWindow):
                 editor.current_file_path = file_path # Define o caminho do arquivo para este editor
 
                 file_name = QFileInfo(file_path).fileName()
-                self.tab_widget.addTab(editor, file_name) # Adiciona nova aba com o nome do arquivo
-                self.tab_widget.setCurrentWidget(editor) # Define a nova aba como ativa
+                self.main_tab_widget.addTab(editor, file_name) # Adiciona nova aba com o nome do arquivo
+                self.main_tab_widget.setCurrentWidget(editor) # Define a nova aba como ativa
 
                 self.setWindowTitle(f'Minha IDE Simples - {file_name}') # Atualiza o título da janela
                 print(f"Arquivo aberto em nova aba: {file_path}")
@@ -499,17 +499,17 @@ class IDE(QMainWindow):
     # Slot para fechar abas
     def close_tab(self, index):
         print(f"Fechando aba no índice: {index}")
-        widget_to_close = self.tab_widget.widget(index)
+        widget_to_close = self.main_tab_widget.widget(index)
         if widget_to_close:
             # Você pode adicionar lógica aqui para perguntar ao usuário se deseja salvar
             # antes de fechar, se o conteúdo do editor foi modificado.
             # widget_to_close.document().isModified() # Pode usar isModified() se implementar a flag
 
             widget_to_close.deleteLater() # Deleta o widget
-            self.tab_widget.removeTab(index) # Remove a aba
+            self.main_tab_widget.removeTab(index) # Remove a aba
 
             # Atualizar o título da janela se a aba fechada for a ativa anterior
-            if self.tab_widget.count() == 0:
+            if self.main_tab_widget.count() == 0:
                  self.setWindowTitle('Minha IDE Simples - Sem Título')
                  # Não há abas, desmarcar seleção no File Explorer
                  self.file_tree_view.clearSelection()
@@ -517,7 +517,7 @@ class IDE(QMainWindow):
 
             else:
                  # Atualizar título para a nova aba ativa
-                 self.update_title_on_tab_change(self.tab_widget.currentIndex())
+                 self.update_title_on_tab_change(self.main_tab_widget.currentIndex())
         else:
             print(f"Erro: Widget na aba {index} não encontrado.")
 
