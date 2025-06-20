@@ -174,7 +174,7 @@ class CustomTerminalWidget(QPlainTextEdit):
     def keyPressEvent(self, event):
         if self.process and self.process.state() == QProcess.Running and not self.isReadOnly():
             cursor = self.textCursor()
-            cursor_position_in_document = cursor.position()
+            cursor_position_in_document = cursor.position() # Posição do cursor ANTES do Enter
 
             if event.key() == Qt.Key_Return or event.key() == Qt.Key_Enter:
                 # Capturar o texto APENAS na área digitável
@@ -184,7 +184,10 @@ class CustomTerminalWidget(QPlainTextEdit):
                 text_until_cursor = cursor.selectedText() # Pega todo o texto do documento até a posição atual
 
                 # Extrair apenas o texto digitado pelo usuário (após self.command_start_position)
-                command_text = text_until_cursor[self.command_start_position :] # <--- CORREÇÃO FINAL: Fatiar a partir de self.command_start_position global
+                # **Debug print para inspecionar self.command_start_position NO MOMENTO DO FATIAMENTO**
+                print(f"keyPressEvent (Enter) - Before slicing: self.command_start_position = {self.command_start_position}")
+
+                command_text = text_until_cursor[self.command_start_position :] # Fatiar a partir de self.command_start_position global
 
 
                 # Remover quebras de linha e espaços em branco do início/fim
