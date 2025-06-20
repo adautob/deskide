@@ -126,7 +126,7 @@ class AIChatWidget(QWidget):
         for match in self.code_block_pattern.finditer(message): # <-- Usar self.code_block_pattern
             start, end = match.span()
             #code_block_full_match = match.group(1) # Não usado diretamente na versão refinada
-            code_content = match.group(1) # O conteúdo dentro do bloco de código (grupo 1 na regex refinada)
+            code_content = match.group(2) # O conteúdo dentro do bloco de código (grupo 1 na regex refinada)
 
 
             # Adicionar texto antes do bloco de código (como HTML normal)
