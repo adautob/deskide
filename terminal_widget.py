@@ -177,17 +177,13 @@ class CustomTerminalWidget(QPlainTextEdit):
             cursor_position_in_document = cursor.position() # Posição do cursor ANTES do Enter
 
             if event.key() == Qt.Key_Return or event.key() == Qt.Key_Enter:
-                # Capturar o texto APENAS na área digitável
-                # Pegar o texto do documento a partir de self.command_start_position até a posição atual do cursor
-                cursor.movePosition(cursor_position_in_document) # Posiciona o cursor no final do texto digitado
-                cursor.movePosition(cursor.Start, cursor.KeepAnchor) # Seleciona do início do documento até a posição atual
-                text_until_cursor = cursor.selectedText() # Pega todo o texto do documento até a posição atual
-
-                # Extrair apenas o texto digitado pelo usuário (após self.command_start_position)
-                # **Debug print para inspecionar self.command_start_position NO MOMENTO DO FATIAMENTO**
-                print(f"keyPressEvent (Enter) - Before slicing: self.command_start_position = {self.command_start_position}")
-
-                command_text = text_until_cursor[self.command_start_position :] # Fatiar a partir de self.command_start_position global
+                # Extrair apenas o texto digitado pelo usuário
+                # Pegar o texto do documento entre self.command_start_position e cursor_position_in_document
+                # Criar um novo cursor para selecionar a área do comando
+                select_cursor = self.textCursor()
+                select_cursor.setPosition(self.command_start_position)
+                select_cursor.setPosition(cursor_position_in_document, select_cursor.KeepAnchor)
+                command_text = select_cursor.selectedText() # <--- CORREÇÃO FINAL: Selecionar apenas a área do comando
 
 
                 # Remover quebras de linha e espaços em branco do início/fim
