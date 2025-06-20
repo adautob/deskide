@@ -111,13 +111,13 @@ class IDE(QMainWindow):
         self.show()
         top_bottom_splitter.addWidget(self.terminal_widget) # Adiciona o terminal ao splitter principal
 
-        # Método auxiliar para obter o editor da aba ativa
-        def current_editor(self):
-            return self.tab_widget.currentWidget()
+    # Método auxiliar para obter o editor da aba ativa
+    def current_editor(self):
+        return self.tab_widget.currentWidget()
 
 
-        def new_file(self):
-            print("Action \'Novo\' triggered")
+    def new_file(self):
+        print("Action \'Novo\' triggered")
 
         # Criar um novo editor e adicioná-lo como uma nova aba
         editor = CodeEditor() # Cria uma nova instância de CodeEditor
