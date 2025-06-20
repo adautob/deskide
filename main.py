@@ -380,13 +380,34 @@ class IDE(QMainWindow):
             self.current_folder_path = folder_path # Atualiza a pasta atual do explorer
             print(f"Pasta aberta: {folder_path}")
 
-            # **Limpar todas as abas ao abrir uma nova pasta**
-            while self.main_tab_widget.count() > 0:
-                 widget_to_close = self.main_tab_widget.widget(0)
-                 widget_to_close.deleteLater()
-                 self.main_tab_widget.removeTab(0)
+            # **Limpar abas de editor ao abrir uma nova pasta, mantendo a aba de chat**
+            # Itere sobre as abas e remova APENAS as que contêm CodeEditors
+            tabs_to_remove = []
+            for i in range(self.main_tab_widget.count()):
+                 widget = self.main_tab_widget.widget(i)
+                 if isinstance(widget, CodeEditor): # Verifica se o widget é um CodeEditor
+                      tabs_to_remove.append(i) # Adiciona o índice da aba de editor para remover
 
-            self.setWindowTitle('Minha IDE Simples - Sem Título')
+            # Remover as abas identificadas (remova em ordem inversa para não invalidar índices)
+            for i in reversed(tabs_to_remove):
+                 widget_to_close = self.main_tab_widget.widget(i)
+                 widget_to_close.deleteLater()
+                 self.main_tab_widget.removeTab(i)
+
+
+            # Opcional: Após fechar as abas de editor, garantir que o Chat de IA esteja visível se for a única aba restante
+            # Verifica se a aba de chat de IA ainda existe antes de tentar selecioná-la
+            chat_tab_index = -1
+            for i in range(self.main_tab_widget.count()):
+                 if isinstance(self.main_tab_widget.widget(i), AIChatWidget):
+                      chat_tab_index = i
+                      break # Encontrou a aba de chat, pode sair do loop
+
+            if chat_tab_index != -1:
+                 self.main_tab_widget.setCurrentIndex(chat_tab_index) # Define a aba de chat como ativa
+
+
+            self.setWindowTitle('Minha IDE Simples - Sem Título') # Título pode ser ajustado
 
 
     def open_file_from_explorer(self, index):
@@ -406,6 +427,11 @@ class IDE(QMainWindow):
         print(f"Fechando aba no índice: {index}")
         widget_to_close = self.main_tab_widget.widget(index)
         if widget_to_close:
+            # **Adicionar lógica para não fechar a aba do chat de IA pelo botão de fechar**
+            if isinstance(widget_to_close, AIChatWidget):
+                 print("Tentativa de fechar a aba do Chat de IA bloqueada.")
+                 return # Não fecha a aba de chat de IA
+
             # Você pode adicionar lógica aqui para perguntar ao usuário se deseja salvar
             # antes de fechar, se o conteúdo do editor foi modificado.
             # widget_to_close.document().isModified() # Pode usar isModified() se implementar a flag
