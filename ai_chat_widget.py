@@ -118,6 +118,7 @@ class AIChatWidget(QWidget):
         formatted_message = f"<b>{sender}:</b> "
 
         # Processar a mensagem para formatar blocos de código
+        code_block_pattern = re.compile(r'(?:\w+)?\n(.*?)\n', re.DOTALL)
         # Usar a variável de instância para a expressão regular
         last_end = 0
         parts = []
