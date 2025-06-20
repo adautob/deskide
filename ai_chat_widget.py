@@ -147,7 +147,7 @@ class AIChatWidget(QWidget):
                     # Formatar o bloco de código
                     import html # A importação de html deve estar no topo do arquivo
                     escaped_code_content = html.escape(code_content)
-                    formatted_code = f"<pre><code style='font-family: \"Courier New\", Consolas, monospace; background-color: #f4f4f4; padding: 5px;'>{escaped_code_content}</code></pre>"
+                    formatted_code = f"<pre style='font-family: \"Courier New\", Consolas, monospace; background-color: #f4f4f4; padding: 5px;'>{escaped_code_content}</pre>"
                     content_html += formatted_code
 
                 else:
